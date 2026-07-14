@@ -26,6 +26,22 @@
   cursor: pointer;
 }
 
+.speed-controls {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.speed-controls button {
+  padding: 0.15rem 0.5rem;
+}
+
+.speed-controls button.speed-active {
+  background: #4a7c59;
+  color: #fff;
+  font-weight: bold;
+}
+
 .unit-build-panel {
   margin-top: 0.75rem;
   padding-top: 0.5rem;

@@ -12,12 +12,17 @@ import { buildScenario } from './scenario'
 
 export const HUMAN_COUNTRY_ID = 'DEU'
 
+/** 1 real second = this many simulated seconds. The source game runs at 1x (real time). */
+export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
+
 interface GameStore {
   state: GameState
   paused: boolean
+  timeScale: number
   nextOrderId: number
   tick: (elapsedMs: number) => void
   setPaused: (paused: boolean) => void
+  setTimeScale: (timeScale: number) => void
   queueBuild: (provinceId: string, unitType: UnitTypeId) => void
   queueMove: (unitId: string, toProvinceId: string) => void
 }
@@ -41,6 +46,7 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
 export const useGameStore = create<GameStore>((set, get) => ({
   state: createGameState(buildScenario()),
   paused: false,
+  timeScale: 1,
   nextOrderId: 1,
   tick: (elapsedMs) =>
     set((s) => {
@@ -49,6 +55,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { state, nextOrderId }
     }),
   setPaused: (paused) => set({ paused }),
+  setTimeScale: (timeScale) => set({ timeScale }),
   queueBuild: (provinceId, unitType) => {
     const orderId = `order-${get().nextOrderId}`
     set((s) => ({
