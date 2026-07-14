@@ -1,6 +1,6 @@
 import { feature } from 'topojson-client'
 import { buildAdjacency, type Topology } from '@con/engine'
-import topologyRaw from './geo/western-europe.topojson?raw'
+import topologyRaw from './geo/world.topojson?raw'
 
 export const OBJECT_NAME = 'provinces'
 

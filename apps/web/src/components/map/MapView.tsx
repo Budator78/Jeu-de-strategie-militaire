@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { geoMercator, geoPath } from 'd3-geo'
+import { geoNaturalEarth1, geoPath } from 'd3-geo'
 import { select } from 'd3-selection'
 import { zoom, type D3ZoomEvent } from 'd3-zoom'
 import { mesh } from 'topojson-client'
@@ -16,7 +16,7 @@ const UNIT_MARKER_SPACING = 9
 
 const UNIT_GLYPH: Record<string, string> = { infantry: 'I', tank: 'T', fighter: 'F' }
 
-const projection = geoMercator().fitSize([WIDTH, HEIGHT], featureCollection as never)
+const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
 
 interface TopoGeometry {
@@ -38,7 +38,7 @@ export function MapView() {
     const svgSelection = select(svgRef.current)
     const gSelection = select(gRef.current)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 8])
+      .scaleExtent([1, 40])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         gSelection.attr('transform', event.transform.toString())
       })

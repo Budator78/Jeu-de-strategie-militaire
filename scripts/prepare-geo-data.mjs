@@ -1,33 +1,42 @@
 #!/usr/bin/env node
-// Downloads/filters Natural Earth admin-1 provinces into a small TopoJSON
-// covering a starting region, for apps/web to render.
+// Builds the world map TopoJSON used by apps/web:
+//   - Western/Central Europe (the active conflict zone) at admin-1 granularity,
+//     with France's 96 départements dissolved into its 13 régions.
+//   - Every other country in the world at admin-0 (whole-country) granularity,
+//     kept coarse since they're background/neutral territory for now.
 //
 // Usage: node scripts/prepare-geo-data.mjs
-// Requires scripts/geo-src/ne_10m_admin_1/ne_10m_admin_1_states_provinces.shp
-// (see scripts/geo-src/README.md for the Natural Earth download step).
+// Requires the two Natural Earth shapefiles described in scripts/geo-src/README.md.
 
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
-const SHP = path.join(
+const ADMIN1_SHP = path.join(
   ROOT,
   "scripts/geo-src/ne_10m_admin_1/ne_10m_admin_1_states_provinces.shp",
+);
+const ADMIN0_SHP = path.join(
+  ROOT,
+  "scripts/geo-src/ne_50m_admin_0/ne_50m_admin_0_countries.shp",
 );
 const INTERMEDIATE = path.join(ROOT, "scripts/geo-src/intermediate.geojson");
 const INTERMEDIATE_WITH_REGIONS = path.join(
   ROOT,
   "scripts/geo-src/intermediate-with-regions.geojson",
 );
-const OUT = path.join(ROOT, "apps/web/src/data/geo/western-europe.topojson");
+const EUROPE_DISSOLVED = path.join(ROOT, "scripts/geo-src/europe-dissolved.geojson");
+const WORLD_REST = path.join(ROOT, "scripts/geo-src/world-rest.geojson");
+const MERGED = path.join(ROOT, "scripts/geo-src/merged-world.geojson");
+const OUT = path.join(ROOT, "apps/web/src/data/geo/world.topojson");
 
-// Starting region: Western/Central Europe. Extend this list to grow the map later.
+// The detailed conflict-zone countries. Extend this list to grow the detailed area later.
 const COUNTRY_CODES = ["DEU", "FRA", "POL", "BEL", "NLD", "LUX", "CZE", "AUT", "CHE"];
 
 // Overseas territories/departments pulled in by adm0_a3 that sit far outside
 // Europe (French Guiana, Antilles, Réunion, Mayotte, Dutch Caribbean) — excluded
-// by id prefix so the map projection stays centered on continental Europe.
+// by id prefix so the detailed cluster stays centered on continental Europe.
 const EXCLUDE_ID_PREFIXES = ["FR-GF", "FR-GP", "FR-MQ", "FR-RE", "FR-YT", "NL-BQ"];
 
 // Natural Earth's admin-1 unit for France is the département (96 of them) —
@@ -73,42 +82,42 @@ const FR_DEPARTMENT_TO_REGION = {
   "95": "IDF",
 };
 
-if (!existsSync(SHP)) {
-  console.error(`Missing source shapefile: ${SHP}`);
-  console.error(
-    "Download it first: curl -sL -o scripts/geo-src/ne_10m_admin_1.zip " +
-      "https://naturalearth.s3.amazonaws.com/10m_cultural/ne_10m_admin_1_states_provinces.zip " +
-      "&& unzip -o scripts/geo-src/ne_10m_admin_1.zip -d scripts/geo-src/ne_10m_admin_1",
-  );
+if (!existsSync(ADMIN1_SHP) || !existsSync(ADMIN0_SHP)) {
+  console.error(`Missing source shapefile(s). Expected:\n  ${ADMIN1_SHP}\n  ${ADMIN0_SHP}`);
+  console.error("See scripts/geo-src/README.md for the Natural Earth download commands.");
   process.exit(1);
 }
 
-// Step 1: filter the world shapefile down to our starting countries, drop
-// overseas territories, compute a stable "id" field, and export GeoJSON.
+function run(cmd) {
+  console.log(cmd);
+  execSync(cmd, { stdio: "inherit", cwd: ROOT });
+}
+
+// Step 1: filter the detailed admin-1 shapefile down to our conflict-zone
+// countries, drop overseas territories, compute a stable "id" field.
 // Windows spawns this via cmd.exe (which ignores single quotes as grouping),
 // so shell-level quoting uses double quotes and JS string literals use single quotes.
 const filterExpr = COUNTRY_CODES.map((c) => `adm0_a3=='${c}'`).join(" || ");
 const excludeExpr = EXCLUDE_ID_PREFIXES.map((p) => `id.indexOf('${p}')==0`).join(" || ");
 
-const step1 = [
-  "npx --yes mapshaper",
-  `-i "${SHP}" encoding=utf8`,
-  `-filter "${filterExpr}"`,
-  `-each "id = iso_3166_2 && iso_3166_2 !== '' ? iso_3166_2 : adm1_code"`,
-  `-filter "!(${excludeExpr})"`,
-  `-filter-fields id,name,name_en,adm0_a3,type_en`,
-  `-o format=geojson "${INTERMEDIATE}"`,
-].join(" ");
-
-console.log(step1);
-execSync(step1, { stdio: "inherit", cwd: ROOT });
+run(
+  [
+    "npx --yes mapshaper",
+    `-i "${ADMIN1_SHP}" encoding=utf8`,
+    `-filter "${filterExpr}"`,
+    `-each "id = iso_3166_2 && iso_3166_2 !== '' ? iso_3166_2 : adm1_code"`,
+    `-filter "!(${excludeExpr})"`,
+    `-filter-fields id,name,name_en,adm0_a3,type_en`,
+    `-o format=geojson "${INTERMEDIATE}"`,
+  ].join(" "),
+);
 
 // Step 2 (plain Node, not mapshaper, to avoid shell-quoting a 96-entry lookup
 // table): tag every French département with the id/name of its région, so the
 // next dissolve step merges them.
-const data = JSON.parse(readFileSync(INTERMEDIATE, "utf8"));
+const admin1Data = JSON.parse(readFileSync(INTERMEDIATE, "utf8"));
 let mappedCount = 0;
-for (const f of data.features) {
+for (const f of admin1Data.features) {
   const p = f.properties;
   if (p.adm0_a3 !== "FRA") {
     p.dissolve_id = p.id;
@@ -125,22 +134,55 @@ for (const f of data.features) {
   p.type_en = "Region";
   mappedCount++;
 }
-writeFileSync(INTERMEDIATE_WITH_REGIONS, JSON.stringify(data));
+writeFileSync(INTERMEDIATE_WITH_REGIONS, JSON.stringify(admin1Data));
 console.log(`Mapped ${mappedCount} French départements into ${Object.keys(FR_REGION_NAMES).length} régions.`);
 
 // Step 3: dissolve by the id we just assigned (a no-op for non-French
-// features, since their dissolve_id is already their original unique id),
-// simplify, and export the final TopoJSON.
-const step3 = [
-  "npx --yes mapshaper",
-  `-i "${INTERMEDIATE_WITH_REGIONS}"`,
-  "-dissolve dissolve_id copy-fields=name,name_en,adm0_a3,type_en",
-  "-rename-fields id=dissolve_id",
-  "-simplify 10% visvalingam keep-shapes",
-  "-rename-layers provinces",
-  `-o format=topojson id-field=id "${OUT}"`,
-].join(" ");
+// features, since their dissolve_id is already their original unique id).
+run(
+  [
+    "npx --yes mapshaper",
+    `-i "${INTERMEDIATE_WITH_REGIONS}"`,
+    "-dissolve dissolve_id copy-fields=name,name_en,adm0_a3,type_en",
+    "-rename-fields id=dissolve_id",
+    `-o format=geojson "${EUROPE_DISSOLVED}"`,
+  ].join(" "),
+);
 
-console.log(step3);
-execSync(step3, { stdio: "inherit", cwd: ROOT });
+// Step 4: the rest of the world, at whole-country granularity (admin-0),
+// excluding the countries we already have in detail above.
+const restExcludeExpr = COUNTRY_CODES.map((c) => `ADM0_A3=='${c}'`).join(" || ");
+run(
+  [
+    "npx --yes mapshaper",
+    `-i "${ADMIN0_SHP}" encoding=utf8`,
+    `-filter "!(${restExcludeExpr})"`,
+    `-each "id = ADM0_A3; name = NAME_EN; name_en = NAME_EN; adm0_a3 = ADM0_A3; type_en = 'Country'"`,
+    "-filter-fields id,name,name_en,adm0_a3,type_en",
+    `-o format=geojson "${WORLD_REST}"`,
+  ].join(" "),
+);
+
+// Step 5 (plain Node): merge the two feature collections. Both ultimately
+// derive from the same Natural Earth base cartography, so shared borders
+// (e.g. Germany/Poland) line up closely enough for mapshaper to detect them
+// as shared arcs when it rebuilds topology from this combined file.
+const europeData = JSON.parse(readFileSync(EUROPE_DISSOLVED, "utf8"));
+const restData = JSON.parse(readFileSync(WORLD_REST, "utf8"));
+const merged = { type: "FeatureCollection", features: [...europeData.features, ...restData.features] };
+writeFileSync(MERGED, JSON.stringify(merged));
+console.log(
+  `Merged ${europeData.features.length} detailed Europe features + ${restData.features.length} world countries = ${merged.features.length} total.`,
+);
+
+// Step 6: simplify and export the final whole-world TopoJSON.
+run(
+  [
+    "npx --yes mapshaper",
+    `-i "${MERGED}"`,
+    "-simplify 10% visvalingam keep-shapes",
+    "-rename-layers provinces",
+    `-o format=topojson id-field=id "${OUT}"`,
+  ].join(" "),
+);
 console.log(`Wrote ${OUT}`);
