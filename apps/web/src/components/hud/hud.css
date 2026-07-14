@@ -47,34 +47,130 @@
   font-weight: bold;
 }
 
-.unit-build-panel {
-  margin-top: 0.75rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #ccc;
+.research-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-.unit-build-panel h3 {
-  margin: 0 0 0.4rem;
-  font-size: 0.95rem;
-}
-
-.unit-build-panel button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.3rem 0.5rem;
-  margin-bottom: 0.3rem;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-
-.unit-build-panel button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.research-button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .save-controls {
   gap: 0.5rem;
+}
+
+/* Generic modal (Build unit / Construct building / Research) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 90;
+}
+
+.modal-panel {
+  background: #f4f1ea;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  min-width: 340px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  font-family: sans-serif;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.research-note {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 0 0 0.75rem;
+}
+
+.production-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.production-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.production-icon {
+  flex: 0 0 auto;
+  color: #3a3226;
+}
+
+.production-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.production-info h4 {
+  margin: 0 0 0.15rem;
+  font-size: 0.9rem;
+}
+
+.production-time,
+.production-cost {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #555;
+}
+
+.production-card button {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.production-card button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.production-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.production-buttons button {
+  flex: 1;
+  padding: 0.4rem 0.5rem;
+  cursor: pointer;
 }
 
 .game-over-backdrop {

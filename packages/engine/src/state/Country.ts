@@ -16,4 +16,10 @@ export interface Country {
   gold: number;
   capitalProvinceId: string | null;
   alive: boolean;
+  /**
+   * Country ids this country has fought (attacked or been attacked by).
+   * AI strategies use this to avoid initiating attacks on human players
+   * unprovoked — see turn/ordersResolver.ts, ai/basicAI.ts.
+   */
+  atWarWith: string[];
 }

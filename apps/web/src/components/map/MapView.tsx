@@ -7,12 +7,15 @@ import type { Unit } from '@con/engine'
 import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
-import { UnitBuildPanel } from '../hud/UnitBuildPanel'
+import { BuildUnitModal } from '../hud/BuildUnitModal'
+import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
 import './MapView.css'
 
 const WIDTH = 900
 const HEIGHT = 700
 const UNIT_MARKER_SPACING = 9
+/** Below this zoom level, only a dot marks each city — the name only appears once zoomed in close enough to read. */
+const CITY_LABEL_ZOOM_THRESHOLD = 5
 
 const UNIT_GLYPH: Record<string, string> = { infantry: 'I', tank: 'T', fighter: 'F' }
 
@@ -28,6 +31,9 @@ export function MapView() {
   const gRef = useRef<SVGGElement | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null)
+  const [zoomScale, setZoomScale] = useState(1)
+  const [buildUnitOpen, setBuildUnitOpen] = useState(false)
+  const [constructOpen, setConstructOpen] = useState(false)
   const provinces = useGameStore((s) => s.state.provinces)
   const countries = useGameStore((s) => s.state.countries)
   const units = useGameStore((s) => s.state.units)
@@ -41,6 +47,7 @@ export function MapView() {
       .scaleExtent([1, 40])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         gSelection.attr('transform', event.transform.toString())
+        setZoomScale(event.transform.k)
       })
     svgSelection.call(zoomBehavior)
     return () => {
@@ -126,6 +133,8 @@ export function MapView() {
     }
     setSelectedUnitId(null)
     setSelectedId(provinceId)
+    setBuildUnitOpen(false)
+    setConstructOpen(false)
   }
 
   function handleUnitClick(unit: Unit, event: React.MouseEvent) {
@@ -169,11 +178,13 @@ export function MapView() {
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
           {cityLabels.map(({ feature, centroid }) => (
             <g key={feature.id} className="city-label" transform={`translate(${centroid[0]}, ${centroid[1]})`}>
-              <circle r={3.5} />
-              <text y={-6} textAnchor="middle">
-                {feature.properties.name_en}
-                {CITY_SIZE[feature.id] !== undefined ? ` (${CITY_SIZE[feature.id]})` : ''}
-              </text>
+              <circle r={3.5 / zoomScale} />
+              {zoomScale > CITY_LABEL_ZOOM_THRESHOLD && (
+                <text y={-6} textAnchor="middle">
+                  {feature.properties.name_en}
+                  {CITY_SIZE[feature.id] !== undefined ? ` (${CITY_SIZE[feature.id]})` : ''}
+                </text>
+              )}
             </g>
           ))}
           {unitMarkers.map(({ unit, x, y }) => {
@@ -223,7 +234,14 @@ export function MapView() {
               </ul>
             )}
             {selectedState.isCity && selectedState.ownerId === HUMAN_COUNTRY_ID && (
-              <UnitBuildPanel provinceId={selected.id} />
+              <div className="production-buttons">
+                <button type="button" onClick={() => setBuildUnitOpen(true)}>
+                  Build unit
+                </button>
+                <button type="button" onClick={() => setConstructOpen(true)}>
+                  Construct building
+                </button>
+              </div>
             )}
             {selectedUnit && <p className="move-hint">Select a highlighted province to move there.</p>}
           </>
@@ -231,6 +249,12 @@ export function MapView() {
           <p>Click a province to select it.</p>
         )}
       </aside>
+      {buildUnitOpen && selected && (
+        <BuildUnitModal provinceId={selected.id} onClose={() => setBuildUnitOpen(false)} />
+      )}
+      {constructOpen && selected && (
+        <ConstructBuildingModal provinceId={selected.id} onClose={() => setConstructOpen(false)} />
+      )}
     </div>
   )
 }

@@ -12,7 +12,7 @@ import {
   type ResearchId,
   type UnitTypeId,
 } from '@con/engine'
-import { buildScenario } from './scenario'
+import { ACTIVE_AI_COUNTRY_CODES, buildScenario } from './scenario'
 
 export const HUMAN_COUNTRY_ID = 'DEU'
 
@@ -50,7 +50,9 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
   let orderId = startOrderId
   let nextState = state
   for (const country of Object.values(nextState.countries)) {
-    if (!country.isAI) continue
+    // Passive nations (everyone except ACTIVE_AI_COUNTRY_CODES) own their
+    // territory and start with a garrison, but never act — see scenario.ts.
+    if (!country.isAI || !ACTIVE_AI_COUNTRY_CODES.includes(country.id)) continue
     for (const action of basicAI.decide(nextState, country.id)) {
       const id = `ai-order-${orderId++}`
       if (action.kind === 'build') {
@@ -88,7 +90,7 @@ function writeSaveFile(save: SaveFile) {
 const initialSave = readSaveFile()
 
 export const useGameStore = create<GameStore>((set, get) => ({
-  state: initialSave?.state ?? createGameState(buildScenario()),
+  state: initialSave?.state ?? createGameState(buildScenario(HUMAN_COUNTRY_ID)),
   paused: false,
   timeScale: 1,
   nextOrderId: initialSave?.nextOrderId ?? 1,
@@ -151,6 +153,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch {
       // ignore
     }
-    set({ state: createGameState(buildScenario()), nextOrderId: 1, hasSave: false, paused: false })
+    set({ state: createGameState(buildScenario(HUMAN_COUNTRY_ID)), nextOrderId: 1, hasSave: false, paused: false })
   },
 }))

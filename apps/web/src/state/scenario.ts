@@ -1,4 +1,4 @@
-import type { CreateGameStateInput, ResourceAmounts, ResourceType } from '@con/engine'
+import type { CreateGameStateInput, ResourceAmounts, ResourceType, UnitTypeId } from '@con/engine'
 import { adjacency, provinceFeatures } from '../data/geoData'
 
 const COUNTRY_NAMES: Record<string, string> = {
@@ -6,8 +6,13 @@ const COUNTRY_NAMES: Record<string, string> = {
   FRA: 'France',
 }
 
-/** Only these countries start as active players; the rest of the map is neutral. */
-const PLAYER_COUNTRY_CODES = ['DEU', 'FRA']
+/**
+ * Only these AI countries actively play themselves (build/construct/research/
+ * attack — see ai/basicAI.ts). Every other nation is a "passive" AI: it owns
+ * its territory and starts with a garrison like everyone else, but never
+ * issues an order of its own — see state/gameStore.ts's runAI.
+ */
+export const ACTIVE_AI_COUNTRY_CODES = ['FRA']
 
 const CAPITAL_PROVINCE_ID: Record<string, string> = {
   DEU: 'DE-BE', // Berlin
@@ -28,7 +33,9 @@ interface CityConfig {
  * list — approximated from the wiki's note that Germany has "8 starting
  * cities" with "two Supplies, Components and Electronics cities respectively"
  * and a deficiency (not absence) of Fuel/Rare Materials. France mirrors the
- * same pattern for now since no equivalent breakdown was available.
+ * same pattern for now since no equivalent breakdown was available. Every
+ * other country just gets its capital marked as a single generic city —
+ * we don't have a researched city list for all ~240 of them.
  */
 const COUNTRY_CITIES: Record<string, CityConfig[]> = {
   DEU: [
@@ -68,6 +75,8 @@ const CITY_SPECIALTY_RATE_PER_MIN = 4
 /** A city's non-specialty resources still trickle in — "deficient", never flat zero. */
 const CITY_BASELINE_RATE_PER_MIN = 1
 const CAPITAL_BONUS_MONEY_PER_MIN = 10
+/** VP bonus for a capital that doesn't have a researched population figure (see CityConfig.size). */
+const GENERIC_CAPITAL_VP = 5
 
 const SPECIALIZABLE_RESOURCES: ResourceType[] = [
   'supplies',
@@ -77,47 +86,72 @@ const SPECIALIZABLE_RESOURCES: ResourceType[] = [
   'rareMaterials',
 ]
 
-export function buildScenario(): CreateGameStateInput {
-  const provinces: CreateGameStateInput['provinces'] = provinceFeatures.map((f) => {
-    const countryCode = f.properties.adm0_a3
-    const ownerId = PLAYER_COUNTRY_CODES.includes(countryCode) ? countryCode : null
-    const isCapital = CAPITAL_PROVINCE_ID[countryCode] === f.id
-    const cityConfig = COUNTRY_CITIES[countryCode]?.find((c) => c.provinceId === f.id)
+/** Every nation starts with the same small garrison — no doctrines/starting-unit research modeled yet. */
+const STARTING_GARRISON: UnitTypeId[] = ['infantry', 'infantry']
 
-    const resources: ResourceAmounts = cityConfig
-      ? {
-          money: CITY_MONEY_PER_MIN + (isCapital ? CAPITAL_BONUS_MONEY_PER_MIN : 0),
-          manpower: CITY_MANPOWER_PER_MIN,
-          ...Object.fromEntries(
-            SPECIALIZABLE_RESOURCES.map((resource) => [
-              resource,
-              resource === cityConfig.specialResource
-                ? CITY_SPECIALTY_RATE_PER_MIN
-                : CITY_BASELINE_RATE_PER_MIN,
-            ]),
-          ),
-        }
-      : { money: BASE_PROVINCE_MONEY_PER_MIN }
+export function buildScenario(humanCountryId: string): CreateGameStateInput {
+  const featuresByCountry = new Map<string, typeof provinceFeatures>()
+  for (const f of provinceFeatures) {
+    const code = f.properties.adm0_a3
+    const list = featuresByCountry.get(code)
+    if (list) list.push(f)
+    else featuresByCountry.set(code, [f])
+  }
 
-    return {
-      id: f.id,
-      name: f.properties.name_en,
-      neighbors: adjacency[f.id] ?? [],
-      ownerId,
-      isCity: Boolean(cityConfig),
-      resources,
-      // Per the wiki: every non-city province is 1 VP (the engine default);
-      // a city's VP depends on population — we approximate with its size badge.
-      victoryPoints: cityConfig?.size,
+  const provinces: CreateGameStateInput['provinces'] = []
+  const countries: CreateGameStateInput['countries'] = []
+  const startingUnits: NonNullable<CreateGameStateInput['startingUnits']> = []
+
+  for (const [countryCode, features] of featuresByCountry) {
+    const capitalProvinceId = CAPITAL_PROVINCE_ID[countryCode] ?? features[0].id
+    const countryName = COUNTRY_NAMES[countryCode] ?? features[0].properties.name_en
+
+    for (const f of features) {
+      const isCapital = f.id === capitalProvinceId
+      const cityConfig = COUNTRY_CITIES[countryCode]?.find((c) => c.provinceId === f.id)
+      const isCity = Boolean(cityConfig) || isCapital
+
+      const resources: ResourceAmounts = isCity
+        ? {
+            money: CITY_MONEY_PER_MIN + (isCapital ? CAPITAL_BONUS_MONEY_PER_MIN : 0),
+            manpower: CITY_MANPOWER_PER_MIN,
+            ...Object.fromEntries(
+              SPECIALIZABLE_RESOURCES.map((resource) => [
+                resource,
+                resource === cityConfig?.specialResource ? CITY_SPECIALTY_RATE_PER_MIN : CITY_BASELINE_RATE_PER_MIN,
+              ]),
+            ),
+          }
+        : { money: BASE_PROVINCE_MONEY_PER_MIN }
+
+      provinces.push({
+        id: f.id,
+        name: f.properties.name_en,
+        neighbors: adjacency[f.id] ?? [],
+        // Every country owns its own territory from the start — no more neutral wilderness.
+        ownerId: countryCode,
+        isCity,
+        resources,
+        victoryPoints: cityConfig?.size ?? (isCapital ? GENERIC_CAPITAL_VP : undefined),
+      })
     }
-  })
 
-  const countries: CreateGameStateInput['countries'] = PLAYER_COUNTRY_CODES.map((code, index) => ({
-    id: code,
-    name: COUNTRY_NAMES[code],
-    isAI: index !== 0,
-    capitalProvinceId: CAPITAL_PROVINCE_ID[code] ?? null,
-  }))
+    countries.push({
+      id: countryCode,
+      name: countryName,
+      isAI: countryCode !== humanCountryId,
+      capitalProvinceId,
+    })
 
-  return { provinces, countries }
+    STARTING_GARRISON.forEach((unitType, index) => {
+      startingUnits.push({
+        id: `start:${countryCode}:${index}`,
+        countryId: countryCode,
+        provinceId: capitalProvinceId,
+        unitType,
+      })
+    })
+  }
+
+  return { provinces, countries, startingUnits }
 }

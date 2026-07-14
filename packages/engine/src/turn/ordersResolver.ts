@@ -69,6 +69,14 @@ function captureProvince(province: Province, newOwnerId: string): void {
   province.buildings = [];
 }
 
+/** Attacking (or capturing) another country's territory puts both sides at war — see ai/basicAI.ts. */
+function declareWar(draft: GameState, aId: string, bId: string): void {
+  const a = draft.countries[aId];
+  const b = draft.countries[bId];
+  if (a && !a.atWarWith.includes(bId)) a.atWarWith.push(bId);
+  if (b && !b.atWarWith.includes(aId)) b.atWarWith.push(aId);
+}
+
 function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }>): void {
   const unit = draft.units[order.unitId];
   if (!unit || unit.provinceId !== order.fromProvinceId) return; // unit gone or already relocated
@@ -79,6 +87,10 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   if (destination.ownerId === unit.ownerId) {
     unit.provinceId = order.toProvinceId;
     return;
+  }
+
+  if (destination.ownerId !== null) {
+    declareWar(draft, unit.ownerId, destination.ownerId);
   }
 
   const defenders = Object.values(draft.units).filter(

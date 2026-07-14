@@ -1,5 +1,7 @@
 import { BUILDING_TYPES, type BuildingId } from "../state/BuildingTypes";
+import type { Country } from "../state/Country";
 import type { GameState } from "../state/GameState";
+import type { Province } from "../state/Province";
 import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from "../state/ResearchTypes";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES, type UnitTypeId } from "../state/UnitTypes";
@@ -10,6 +12,8 @@ const BUILD_PREFERENCE: UnitTypeId[] = ["infantry", "tank", "fighter"];
 /** Arms Industry boosts every resource; build it before the narrower Recruiting Office. */
 const CONSTRUCT_PREFERENCE: BuildingId[] = ["armsIndustry", "recruitingOffice"];
 const RESEARCH_PREFERENCE: ResearchId[] = ["infantryTier2", "tankTier2", "fighterTier2"];
+/** "Stays defensive, doesn't full send": only picks off lightly-held targets, never storms a real garrison. */
+const MAX_DEFENDERS_TO_ATTACK = 2;
 
 function canAfford(
   resources: Record<ResourceType, number>,
@@ -39,11 +43,26 @@ function countDefenders(state: GameState, provinceId: string, notOwnedBy: string
 }
 
 /**
+ * Never initiates an attack on a human-controlled country unprovoked — only
+ * reacts once at war (i.e. once that human has attacked first). Free to
+ * expand into neutral land or skirmish with other AI countries.
+ */
+function isAttackable(state: GameState, country: Country, target: Province): boolean {
+  if (target.ownerId === null) return true;
+  const owner = state.countries[target.ownerId];
+  if (!owner) return true;
+  if (!owner.isAI && !country.atWarWith.includes(target.ownerId)) return false;
+  return true;
+}
+
+/**
  * A simple, deterministic AI: build the highest-preference affordable unit
  * and construct the highest-preference affordable building in each idle
  * city, research when it has spare capacity (max 2 concurrent, per the
  * wiki), and send idle units to attack/annex the weakest-looking adjacent
- * non-owned province (fewest defenders first).
+ * non-owned province — but only ever lightly-defended ones (never a human
+ * unprovoked, never a real garrison) so it stays defensive rather than
+ * "full sending" every idle unit at the nearest target.
  */
 export const basicAI: AIStrategy = {
   decide(state, countryId) {
@@ -91,6 +110,8 @@ export const basicAI: AIStrategy = {
       const targets = province.neighbors
         .map((id) => state.provinces[id])
         .filter((p): p is NonNullable<typeof p> => Boolean(p) && p.ownerId !== countryId)
+        .filter((p) => isAttackable(state, country, p))
+        .filter((p) => countDefenders(state, p.id, countryId) <= MAX_DEFENDERS_TO_ATTACK)
         .sort((a, b) => countDefenders(state, a.id, countryId) - countDefenders(state, b.id, countryId));
 
       if (targets.length > 0) {
