@@ -7,6 +7,16 @@ import { UNIT_TYPES } from "../state/UnitTypes";
 
 const MS_PER_MINUTE = 60_000;
 
+const ALL_RESOURCES: ResourceType[] = [
+  "supplies",
+  "components",
+  "fuel",
+  "electronics",
+  "rareMaterials",
+  "manpower",
+  "money",
+];
+
 function buildingBonusMultiplier(province: Province, resource: ResourceType): number {
   let multiplier = 1;
   for (const buildingId of province.buildings) {
@@ -53,6 +63,24 @@ function computeUpkeepPerMinute(
 }
 
 /**
+ * Net per-minute rate (province income with building bonuses, minus unit
+ * upkeep) for every standard resource. Exported so the UI can show live
+ * "+X /h" rates next to each stockpile without re-deriving the economy rules.
+ */
+export function computeNetIncomePerMinute(
+  state: GameState,
+  countryId: string,
+): Record<ResourceType, number> {
+  const income = computeIncomePerMinute(state, countryId);
+  const upkeep = computeUpkeepPerMinute(state, countryId);
+  const net = {} as Record<ResourceType, number>;
+  for (const key of ALL_RESOURCES) {
+    net[key] = (income[key] ?? 0) - (upkeep[key] ?? 0);
+  }
+  return net;
+}
+
+/**
  * Adds each country's province income (supplies, components, fuel,
  * electronics, rare materials, manpower, money — all expressed as per-minute
  * rates on Province.resources, boosted by any buildings present), then
@@ -66,20 +94,9 @@ export function resolveEconomy(state: GameState, elapsedMs: number): GameState {
   return produce(state, (draft) => {
     for (const country of Object.values(draft.countries)) {
       if (!country.alive) continue;
-      const incomePerMinute = computeIncomePerMinute(state, country.id);
-      const upkeepPerMinute = computeUpkeepPerMinute(state, country.id);
-      const resources: ResourceType[] = [
-        "supplies",
-        "components",
-        "fuel",
-        "electronics",
-        "rareMaterials",
-        "manpower",
-        "money",
-      ];
-      for (const key of resources) {
-        const netPerMinute = (incomePerMinute[key] ?? 0) - (upkeepPerMinute[key] ?? 0);
-        const delta = netPerMinute * (elapsedMs / MS_PER_MINUTE);
+      const netPerMinute = computeNetIncomePerMinute(state, country.id);
+      for (const key of ALL_RESOURCES) {
+        const delta = netPerMinute[key] * (elapsedMs / MS_PER_MINUTE);
         country.resources[key] = Math.max(0, (country.resources[key] ?? 0) + delta);
       }
     }

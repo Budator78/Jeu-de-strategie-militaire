@@ -8,7 +8,7 @@ export function SaveControls() {
   const hasSave = useGameStore((s) => s.hasSave)
 
   return (
-    <div className="turn-controls save-controls">
+    <>
       <button type="button" onClick={saveGame}>
         Save
       </button>
@@ -18,9 +18,7 @@ export function SaveControls() {
       <button type="button" onClick={newGame}>
         New Game
       </button>
-      <span style={{ fontSize: '0.75rem', color: '#666' }}>
-        {hasSave ? 'Autosaves every ~5s' : 'No save yet'}
-      </span>
-    </div>
+      <span style={{ fontSize: '0.72rem' }}>{hasSave ? 'Autosaves every ~5s' : 'No save yet'}</span>
+    </>
   )
 }

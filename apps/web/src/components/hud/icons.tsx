@@ -63,3 +63,80 @@ export function ResearchIcon() {
     </svg>
   )
 }
+
+/** Small colored resource glyphs for the top HUD bar (original art, styled after the source game's silhouettes). */
+export function ResourceIcon({ resource }: { resource: string }) {
+  switch (resource) {
+    case 'supplies': // ammo crate
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <rect x="1" y="4" width="14" height="10" rx="1" fill="#7a8a4a" />
+          <rect x="1" y="7.5" width="14" height="2" fill="#5a6836" />
+          <rect x="6.5" y="2" width="3" height="3" fill="#5a6836" />
+        </svg>
+      )
+    case 'components': // gear
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <circle cx="8" cy="8" r="4.5" fill="#9aa4ad" />
+          <circle cx="8" cy="8" r="1.8" fill="#39424a" />
+          <rect x="7" y="0.5" width="2" height="3" fill="#9aa4ad" />
+          <rect x="7" y="12.5" width="2" height="3" fill="#9aa4ad" />
+          <rect x="0.5" y="7" width="3" height="2" fill="#9aa4ad" />
+          <rect x="12.5" y="7" width="3" height="2" fill="#9aa4ad" />
+        </svg>
+      )
+    case 'fuel': // jerrycan
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <rect x="2.5" y="3" width="11" height="12" rx="1" fill="#b8452e" />
+          <rect x="4" y="1" width="4" height="3" fill="#8f3421" />
+          <path d="M4.5 6 L11.5 13 M11.5 6 L4.5 13" stroke="#8f3421" strokeWidth="1.4" />
+        </svg>
+      )
+    case 'electronics': // chip
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="#4f9e5c" />
+          <rect x="6" y="6" width="4" height="4" fill="#2e6b39" />
+          <g stroke="#4f9e5c" strokeWidth="1.2">
+            <line x1="5.5" y1="0.5" x2="5.5" y2="3.5" /><line x1="10.5" y1="0.5" x2="10.5" y2="3.5" />
+            <line x1="5.5" y1="12.5" x2="5.5" y2="15.5" /><line x1="10.5" y1="12.5" x2="10.5" y2="15.5" />
+            <line x1="0.5" y1="5.5" x2="3.5" y2="5.5" /><line x1="0.5" y1="10.5" x2="3.5" y2="10.5" />
+            <line x1="12.5" y1="5.5" x2="15.5" y2="5.5" /><line x1="12.5" y1="10.5" x2="15.5" y2="10.5" />
+          </g>
+        </svg>
+      )
+    case 'rareMaterials': // ore/gem
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <path d="M8 1.5 L13.5 6 L8 14.5 L2.5 6 Z" fill="#7d6aa8" />
+          <path d="M8 1.5 L8 14.5 M2.5 6 L13.5 6" stroke="#5c4b85" strokeWidth="1" />
+        </svg>
+      )
+    case 'manpower': // soldier bust
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <circle cx="8" cy="5" r="3" fill="#c8b27a" />
+          <path d="M2.5 15 Q2.5 9.5 8 9.5 Q13.5 9.5 13.5 15 Z" fill="#c8b27a" />
+        </svg>
+      )
+    case 'money': // banknote
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <rect x="0.5" y="4" width="15" height="8" rx="1" fill="#5f9e6b" />
+          <circle cx="8" cy="8" r="2.2" fill="#3d7047" />
+        </svg>
+      )
+    case 'gold': // ingots
+      return (
+        <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden="true">
+          <path d="M2 13.5 L3.5 9.5 L7 9.5 L8.5 13.5 Z" fill="#d8a92c" />
+          <path d="M7.5 13.5 L9 9.5 L12.5 9.5 L14 13.5 Z" fill="#e5bc4a" />
+          <path d="M4.8 8.5 L6.3 4.5 L9.8 4.5 L11.3 8.5 Z" fill="#f0cd62" />
+        </svg>
+      )
+    default:
+      return null
+  }
+}

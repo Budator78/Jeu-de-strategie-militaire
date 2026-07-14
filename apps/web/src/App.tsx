@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CountryPanel } from './components/hud/CountryPanel'
 import { GameClock } from './components/hud/GameClock'
 import { GameOverModal } from './components/hud/GameOverModal'
 import { ResearchIcon } from './components/hud/icons'
@@ -13,16 +14,25 @@ function App() {
   const [researchOpen, setResearchOpen] = useState(false)
 
   return (
-    <main style={{ fontFamily: 'sans-serif', padding: '1.5rem' }}>
-      <h1>Conflict of Nations — Like</h1>
+    <main
+      style={{
+        fontFamily: "'Segoe UI', sans-serif",
+        padding: '0.6rem 0.8rem',
+        background: '#242e37',
+        color: '#dfe7ea',
+        minHeight: '100vh',
+        boxSizing: 'border-box',
+      }}
+    >
       <ResourceBar />
-      <GameClock />
+      <CountryPanel />
       <div className="turn-controls">
+        <GameClock />
         <button type="button" className="research-button" onClick={() => setResearchOpen(true)}>
           <ResearchIcon /> Research
         </button>
+        <SaveControls />
       </div>
-      <SaveControls />
       <MapView />
       {researchOpen && <ResearchModal onClose={() => setResearchOpen(false)} />}
       <GameOverModal />
