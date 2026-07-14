@@ -106,6 +106,9 @@ export function buildScenario(): CreateGameStateInput {
       ownerId,
       isCity: Boolean(cityConfig),
       resources,
+      // Per the wiki: every non-city province is 1 VP (the engine default);
+      // a city's VP depends on population — we approximate with its size badge.
+      victoryPoints: cityConfig?.size,
     }
   })
 

@@ -13,4 +13,6 @@ export interface Province {
   isCity: boolean;
   /** Per-minute yield to whichever country owns this province (see turn/economyResolver.ts). */
   resources: ResourceAmounts;
+  /** Per the source game: every non-city province is worth 1 VP; a city's VP depends on its population/buildings. */
+  victoryPoints: number;
 }

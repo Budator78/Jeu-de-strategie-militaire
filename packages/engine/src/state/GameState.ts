@@ -6,12 +6,16 @@ import type { Order } from "../turn/orders";
 export interface GameConfig {
   /** When true, gold never drops below UNLIMITED_GOLD_FLOOR (see rules/balance.ts). */
   unlimitedGold: boolean;
+  /** Total victory points a country needs to win (see rules/winConditions.ts). */
+  victoryPointTarget: number;
 }
 
 export interface GameState {
   /** Cumulative simulated milliseconds since game start (the game runs continuously, not in discrete turns). */
   clockMs: number;
-  status: "inProgress" | "won" | "lost";
+  status: "inProgress" | "ended";
+  /** Set once status is "ended" — the winning country's id, or null if won by no one standing. */
+  winnerId: string | null;
   provinces: Record<string, Province>;
   countries: Record<string, Country>;
   units: Record<string, Unit>;

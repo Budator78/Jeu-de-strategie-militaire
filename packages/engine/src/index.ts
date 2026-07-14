@@ -15,6 +15,7 @@ export * from "./turn/combatResolver";
 export * from "./turn/ordersResolver";
 export * from "./turn/advanceTime";
 export * from "./rules/balance";
+export * from "./rules/winConditions";
 export * from "./utils/rng";
 export * from "./ai/types";
 export * from "./ai/basicAI";

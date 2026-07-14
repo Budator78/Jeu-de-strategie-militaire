@@ -21,6 +21,11 @@
   font-weight: bold;
 }
 
+.resource-bar .vp {
+  color: #2b5a8a;
+  font-weight: bold;
+}
+
 .turn-controls button {
   padding: 0.3rem 0.9rem;
   cursor: pointer;
@@ -66,4 +71,38 @@
 .unit-build-panel button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.save-controls {
+  gap: 0.5rem;
+}
+
+.game-over-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.game-over-modal {
+  background: #f4f1ea;
+  padding: 2rem 2.5rem;
+  border-radius: 8px;
+  text-align: center;
+  font-family: sans-serif;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.game-over-modal h2 {
+  margin-top: 0;
+}
+
+.game-over-modal button {
+  margin-top: 1rem;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  font-size: 1rem;
 }

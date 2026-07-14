@@ -2,7 +2,7 @@ import type { Country } from "./Country";
 import type { GameConfig, GameState } from "./GameState";
 import type { Province } from "./Province";
 import type { ResourceAmounts } from "./ResourceTypes";
-import { DEFAULT_PROVINCE_MONEY_YIELD } from "../rules/balance";
+import { DEFAULT_PROVINCE_MONEY_YIELD, DEFAULT_PROVINCE_VP, DEFAULT_VICTORY_POINT_TARGET } from "../rules/balance";
 
 export interface ProvinceInput {
   id: string;
@@ -11,6 +11,7 @@ export interface ProvinceInput {
   ownerId: string | null;
   isCity?: boolean;
   resources?: ResourceAmounts;
+  victoryPoints?: number;
 }
 
 export interface CountryInput {
@@ -38,6 +39,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
       neighbors: p.neighbors,
       isCity: p.isCity ?? false,
       resources: p.resources ?? { money: DEFAULT_PROVINCE_MONEY_YIELD },
+      victoryPoints: p.victoryPoints ?? DEFAULT_PROVINCE_VP,
     };
   }
 
@@ -65,11 +67,12 @@ export function createGameState(input: CreateGameStateInput): GameState {
   return {
     clockMs: 0,
     status: "inProgress",
+    winnerId: null,
     provinces,
     countries,
     units: {},
     pendingOrders: [],
     rngState: input.rngSeed ?? 1,
-    config: { unlimitedGold: true, ...input.config },
+    config: { unlimitedGold: true, victoryPointTarget: DEFAULT_VICTORY_POINT_TARGET, ...input.config },
   };
 }
