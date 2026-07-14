@@ -1,0 +1,53 @@
+.resource-bar,
+.turn-controls {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-family: sans-serif;
+  padding: 0.5rem 0.75rem;
+  background: #f4f1ea;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.resource-bar .country-name {
+  font-weight: bold;
+}
+
+.resource-bar .gold {
+  color: #a6720a;
+  font-weight: bold;
+}
+
+.turn-controls button {
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+
+.unit-build-panel {
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #ccc;
+}
+
+.unit-build-panel h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.unit-build-panel button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  margin-bottom: 0.3rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.unit-build-panel button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

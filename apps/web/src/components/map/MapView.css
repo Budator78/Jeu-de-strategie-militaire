@@ -1,0 +1,141 @@
+.map-view {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.map-svg {
+  width: min(900px, 70vw);
+  height: auto;
+  background: #b7c9c2;
+  border: 1px solid #ccc;
+  cursor: grab;
+}
+
+.province {
+  stroke: #6b6250;
+  stroke-width: 0.4;
+  transition: fill 0.1s ease;
+}
+
+.province.owner-neutral {
+  fill: #cdbe97;
+}
+
+.province.owner-DEU {
+  fill: #5c7a52;
+}
+
+.province.owner-FRA {
+  fill: #7a3b3b;
+}
+
+.province:hover {
+  filter: brightness(1.15);
+}
+
+.province.city {
+  stroke: #2b2416;
+  stroke-width: 1.1;
+}
+
+.province.selected {
+  stroke: #111;
+  stroke-width: 1.8;
+}
+
+.province.valid-target {
+  filter: brightness(1.3) saturate(1.4);
+  cursor: crosshair;
+}
+
+/* Front line: shared border between two hostile-owned provinces. Original
+   stylization (not a copy of any game's exact art) evoking a contested edge. */
+.front-line {
+  fill: none;
+  stroke: #d94f3a;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1 6;
+  pointer-events: none;
+}
+
+.city-label {
+  pointer-events: none;
+}
+
+.city-label circle {
+  fill: #fff;
+  stroke: #2b2416;
+  stroke-width: 0.6;
+}
+
+.city-label text {
+  font-size: 7px;
+  font-family: sans-serif;
+  fill: #1c1a12;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 2px;
+}
+
+.map-sidebar {
+  min-width: 220px;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: sans-serif;
+}
+
+.map-sidebar .local-name {
+  color: #666;
+  font-style: italic;
+}
+
+.map-sidebar .yields {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0;
+}
+
+.map-sidebar .unit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+}
+
+.map-sidebar .move-hint {
+  font-size: 0.85rem;
+  color: #a6720a;
+  font-weight: bold;
+}
+
+.unit-marker {
+  cursor: pointer;
+}
+
+.unit-marker rect {
+  stroke: #1c1a12;
+  stroke-width: 0.6;
+}
+
+.unit-marker.owner-DEU rect {
+  fill: #9fd18f;
+}
+
+.unit-marker.owner-FRA rect {
+  fill: #e4a3a3;
+}
+
+.unit-marker.selected rect {
+  stroke: #fff;
+  stroke-width: 1.2;
+}
+
+.unit-marker text {
+  font-size: 6px;
+  font-family: sans-serif;
+  fill: #1c1a12;
+  pointer-events: none;
+}
