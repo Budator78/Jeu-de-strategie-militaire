@@ -2,6 +2,7 @@ import { produce } from "immer";
 import type { BuildingId } from "../state/BuildingTypes";
 import { BUILDING_TYPES } from "../state/BuildingTypes";
 import type { GameState } from "../state/GameState";
+import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from "../state/ResearchTypes";
 import type { ResourceType } from "../state/ResourceTypes";
 import type { UnitTypeId } from "../state/UnitTypes";
 import { UNIT_TYPES } from "../state/UnitTypes";
@@ -30,6 +31,13 @@ export type Order =
       ownerId: string;
       provinceId: string;
       buildingId: BuildingId;
+      completesAt: number;
+    }
+  | {
+      kind: "research";
+      id: string;
+      ownerId: string;
+      researchId: ResearchId;
       completesAt: number;
     };
 
@@ -150,6 +158,46 @@ export function issueConstructOrder(
       provinceId,
       buildingId,
       completesAt: draft.clockMs + def.buildTimeMs,
+    });
+  });
+}
+
+/**
+ * Queues a research, paying its cost upfront. Per the wiki: at most two
+ * researches may be in progress for a country at once; refuses if already
+ * researched, already pending, at the concurrency cap, or unaffordable.
+ */
+export function issueResearchOrder(
+  state: GameState,
+  orderId: string,
+  ownerId: string,
+  researchId: ResearchId,
+): GameState {
+  const country = state.countries[ownerId];
+  if (!country) return state;
+  if (country.researchedIds.includes(researchId)) return state;
+
+  const pendingForCountry = state.pendingOrders.filter(
+    (o) => o.kind === "research" && o.ownerId === ownerId,
+  );
+  if (pendingForCountry.some((o) => o.kind === "research" && o.researchId === researchId)) return state;
+  if (pendingForCountry.length >= MAX_CONCURRENT_RESEARCH) return state;
+
+  const def = RESEARCH_TYPES[researchId];
+  if (!canAffordCost(country.resources, def.cost)) return state;
+
+  return produce(state, (draft) => {
+    const draftCountry = draft.countries[ownerId];
+    for (const [resource, amount] of Object.entries(def.cost)) {
+      const key = resource as ResourceType;
+      draftCountry.resources[key] -= amount ?? 0;
+    }
+    draft.pendingOrders.push({
+      kind: "research",
+      id: orderId,
+      ownerId,
+      researchId,
+      completesAt: draft.clockMs + def.researchTimeMs,
     });
   });
 }

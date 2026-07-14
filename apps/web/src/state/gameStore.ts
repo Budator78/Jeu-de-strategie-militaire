@@ -6,8 +6,10 @@ import {
   issueBuildOrder,
   issueConstructOrder,
   issueMoveOrder,
+  issueResearchOrder,
   type BuildingId,
   type GameState,
+  type ResearchId,
   type UnitTypeId,
 } from '@con/engine'
 import { buildScenario } from './scenario'
@@ -38,6 +40,7 @@ interface GameStore {
   queueBuild: (provinceId: string, unitType: UnitTypeId) => void
   queueMove: (unitId: string, toProvinceId: string) => void
   queueConstruct: (provinceId: string, buildingId: BuildingId) => void
+  queueResearch: (researchId: ResearchId) => void
   saveGame: () => void
   loadGame: () => void
   newGame: () => void
@@ -54,6 +57,8 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
         nextState = issueBuildOrder(nextState, id, country.id, action.provinceId, action.unitType)
       } else if (action.kind === 'construct') {
         nextState = issueConstructOrder(nextState, id, country.id, action.provinceId, action.buildingId)
+      } else if (action.kind === 'research') {
+        nextState = issueResearchOrder(nextState, id, country.id, action.researchId)
       } else {
         nextState = issueMoveOrder(nextState, id, country.id, action.unitId, action.toProvinceId)
       }
@@ -121,6 +126,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((s) => ({
       nextOrderId: s.nextOrderId + 1,
       state: issueConstructOrder(s.state, orderId, HUMAN_COUNTRY_ID, provinceId, buildingId),
+    }))
+  },
+  queueResearch: (researchId) => {
+    const orderId = `order-${get().nextOrderId}`
+    set((s) => ({
+      nextOrderId: s.nextOrderId + 1,
+      state: issueResearchOrder(s.state, orderId, HUMAN_COUNTRY_ID, researchId),
     }))
   },
   saveGame: () => {

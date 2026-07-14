@@ -1,6 +1,7 @@
 import { produce } from "immer";
 import type { GameState } from "../state/GameState";
 import type { Province } from "../state/Province";
+import { RESEARCH_TYPES } from "../state/ResearchTypes";
 import { UNIT_TYPES } from "../state/UnitTypes";
 import { resolveCombat } from "./combatResolver";
 import type { Order } from "./orders";
@@ -17,6 +18,8 @@ export function processCompletedOrders(state: GameState): GameState {
         applyBuildOrder(draft, order);
       } else if (order.kind === "construct") {
         applyConstructOrder(draft, order);
+      } else if (order.kind === "research") {
+        applyResearchOrder(draft, order);
       } else {
         applyMoveOrder(draft, order);
       }
@@ -28,6 +31,10 @@ function applyBuildOrder(draft: GameState, order: Extract<Order, { kind: "build"
   const province = draft.provinces[order.provinceId];
   if (!province || province.ownerId !== order.ownerId) return; // province lost while building
 
+  const baseDef = UNIT_TYPES[order.unitType];
+  const research = Object.values(RESEARCH_TYPES).find((r) => r.unitType === order.unitType);
+  const researched = research ? draft.countries[order.ownerId]?.researchedIds.includes(research.id) : false;
+
   const unitId = `unit:${order.id}`;
   draft.units[unitId] = {
     id: unitId,
@@ -35,6 +42,8 @@ function applyBuildOrder(draft: GameState, order: Extract<Order, { kind: "build"
     ownerId: order.ownerId,
     provinceId: order.provinceId,
     health: 100,
+    attack: baseDef.attack * (1 + (researched && research ? research.attackBonus : 0)),
+    defense: baseDef.defense * (1 + (researched && research ? research.defenseBonus : 0)),
   };
 }
 
@@ -43,6 +52,14 @@ function applyConstructOrder(draft: GameState, order: Extract<Order, { kind: "co
   if (!province || province.ownerId !== order.ownerId) return; // province lost while building
   if (!province.buildings.includes(order.buildingId)) {
     province.buildings.push(order.buildingId);
+  }
+}
+
+function applyResearchOrder(draft: GameState, order: Extract<Order, { kind: "research" }>): void {
+  const country = draft.countries[order.ownerId];
+  if (!country) return;
+  if (!country.researchedIds.includes(order.researchId)) {
+    country.researchedIds.push(order.researchId);
   }
 }
 

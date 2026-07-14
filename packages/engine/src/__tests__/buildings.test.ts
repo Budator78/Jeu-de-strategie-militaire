@@ -130,7 +130,10 @@ describe("capture clears buildings", () => {
     state = {
       ...state,
       provinces: { ...state.provinces, FIELD: { ...state.provinces.FIELD, ownerId: "B" } },
-      units: { ...state.units, "b-unit": { id: "b-unit", type: "infantry", ownerId: "B", provinceId: "FIELD", health: 100 } },
+      units: {
+        ...state.units,
+        "b-unit": { id: "b-unit", type: "infantry", ownerId: "B", provinceId: "FIELD", health: 100, attack: 8, defense: 10 },
+      },
     };
     state = issueMoveOrder(state, "m-1", "B", "b-unit", "CITY_A");
     state = advanceTime(state, UNIT_TYPES.infantry.moveTimeMs + 1);

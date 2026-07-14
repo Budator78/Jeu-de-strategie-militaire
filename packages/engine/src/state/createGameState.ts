@@ -62,6 +62,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
         money: 0,
       },
       gold: 0,
+      researchedIds: [],
       capitalProvinceId: c.capitalProvinceId,
       alive: true,
     };

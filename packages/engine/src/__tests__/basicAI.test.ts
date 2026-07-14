@@ -78,7 +78,13 @@ describe("basicAI", () => {
     state = issueBuildOrder(state, "order-a", "A", "FIELD_STRONG", "infantry");
     // FIELD_STRONG isn't a city in this scenario, so building there should be rejected —
     // simulate a defender by placing a unit directly instead.
-    state = { ...state, units: { ...state.units, "defender-1": { id: "defender-1", type: "tank", ownerId: "A", provinceId: "FIELD_STRONG", health: 100 } } };
+    state = {
+      ...state,
+      units: {
+        ...state.units,
+        "defender-1": { id: "defender-1", type: "tank", ownerId: "A", provinceId: "FIELD_STRONG", health: 100, attack: 16, defense: 12 },
+      },
+    };
 
     const actions = basicAI.decide(state, "B");
     const moveAction = actions.find((a) => a.kind === "move" && a.unitId === unitId);

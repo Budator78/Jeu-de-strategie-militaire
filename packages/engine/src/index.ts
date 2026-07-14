@@ -7,6 +7,7 @@ export * from "./state/Country";
 export * from "./state/Unit";
 export * from "./state/UnitTypes";
 export * from "./state/BuildingTypes";
+export * from "./state/ResearchTypes";
 export * from "./state/GameState";
 export * from "./state/createGameState";
 export * from "./turn/economyResolver";

@@ -1,5 +1,6 @@
 import { GameClock } from './components/hud/GameClock'
 import { GameOverModal } from './components/hud/GameOverModal'
+import { ResearchPanel } from './components/hud/ResearchPanel'
 import { ResourceBar } from './components/hud/ResourceBar'
 import { SaveControls } from './components/hud/SaveControls'
 import { MapView } from './components/map/MapView'
@@ -14,6 +15,7 @@ function App() {
       <ResourceBar />
       <GameClock />
       <SaveControls />
+      <ResearchPanel />
       <MapView />
       <GameOverModal />
     </main>

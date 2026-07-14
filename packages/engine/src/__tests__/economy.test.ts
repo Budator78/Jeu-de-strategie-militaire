@@ -51,7 +51,7 @@ describe("advanceTime / unit upkeep", () => {
     state = {
       ...state,
       units: {
-        u1: { id: "u1", type: "infantry", ownerId: "A", provinceId: "P1", health: 100 },
+        u1: { id: "u1", type: "infantry", ownerId: "A", provinceId: "P1", health: 100, attack: 8, defense: 10 },
       },
     };
     state = advanceTime(state, ONE_MINUTE_MS);
@@ -69,7 +69,7 @@ describe("advanceTime / unit upkeep", () => {
       units: Object.fromEntries(
         Array.from({ length: 50 }, (_, i) => [
           `u${i}`,
-          { id: `u${i}`, type: "tank" as const, ownerId: "A", provinceId: "P1", health: 100 },
+          { id: `u${i}`, type: "tank" as const, ownerId: "A", provinceId: "P1", health: 100, attack: 16, defense: 12 },
         ]),
       ),
     };

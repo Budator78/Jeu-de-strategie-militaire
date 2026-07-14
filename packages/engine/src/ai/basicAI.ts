@@ -1,5 +1,6 @@
 import { BUILDING_TYPES, type BuildingId } from "../state/BuildingTypes";
 import type { GameState } from "../state/GameState";
+import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from "../state/ResearchTypes";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES, type UnitTypeId } from "../state/UnitTypes";
 import type { AIAction, AIStrategy } from "./types";
@@ -8,6 +9,7 @@ import type { AIAction, AIStrategy } from "./types";
 const BUILD_PREFERENCE: UnitTypeId[] = ["infantry", "tank", "fighter"];
 /** Arms Industry boosts every resource; build it before the narrower Recruiting Office. */
 const CONSTRUCT_PREFERENCE: BuildingId[] = ["armsIndustry", "recruitingOffice"];
+const RESEARCH_PREFERENCE: ResearchId[] = ["infantryTier2", "tankTier2", "fighterTier2"];
 
 function canAfford(
   resources: Record<ResourceType, number>,
@@ -39,7 +41,8 @@ function countDefenders(state: GameState, provinceId: string, notOwnedBy: string
 /**
  * A simple, deterministic AI: build the highest-preference affordable unit
  * and construct the highest-preference affordable building in each idle
- * city, and send idle units to attack/annex the weakest-looking adjacent
+ * city, research when it has spare capacity (max 2 concurrent, per the
+ * wiki), and send idle units to attack/annex the weakest-looking adjacent
  * non-owned province (fewest defenders first).
  */
 export const basicAI: AIStrategy = {
@@ -65,6 +68,18 @@ export const basicAI: AIStrategy = {
         if (buildingId) {
           actions.push({ kind: "construct", provinceId: province.id, buildingId });
         }
+      }
+    }
+
+    const pendingResearchCount = state.pendingOrders.filter(
+      (o) => o.kind === "research" && o.ownerId === countryId,
+    ).length;
+    if (pendingResearchCount < MAX_CONCURRENT_RESEARCH) {
+      const researchId = RESEARCH_PREFERENCE.find(
+        (id) => !country.researchedIds.includes(id) && canAfford(country.resources, RESEARCH_TYPES[id].cost),
+      );
+      if (researchId) {
+        actions.push({ kind: "research", researchId });
       }
     }
 
