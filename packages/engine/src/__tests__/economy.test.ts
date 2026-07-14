@@ -45,6 +45,40 @@ describe("advanceTime / standard resources", () => {
   });
 });
 
+describe("advanceTime / unit upkeep", () => {
+  it("deducts upkeep for owned units from the matching resource", () => {
+    let state = scenario(false);
+    state = {
+      ...state,
+      units: {
+        u1: { id: "u1", type: "infantry", ownerId: "A", provinceId: "P1", health: 100 },
+      },
+    };
+    state = advanceTime(state, ONE_MINUTE_MS);
+    // Income: 17 money (unaffected, infantry upkeep is supplies+manpower).
+    // Supplies/manpower start at 0 and have no province income here, so upkeep just clamps at 0.
+    expect(state.countries.A.resources.money).toBe(17);
+    expect(state.countries.A.resources.supplies).toBe(0);
+    expect(state.countries.A.resources.manpower).toBe(0);
+  });
+
+  it("never lets a resource go negative from upkeep", () => {
+    let state = scenario(false);
+    state = {
+      ...state,
+      units: Object.fromEntries(
+        Array.from({ length: 50 }, (_, i) => [
+          `u${i}`,
+          { id: `u${i}`, type: "tank" as const, ownerId: "A", provinceId: "P1", health: 100 },
+        ]),
+      ),
+    };
+    state = advanceTime(state, ONE_MINUTE_MS);
+    expect(state.countries.A.resources.fuel).toBe(0);
+    expect(state.countries.A.resources.components).toBe(0);
+  });
+});
+
 describe("advanceTime / gold (premium currency)", () => {
   it("tops up only human-controlled countries when unlimitedGold is enabled", () => {
     const state = advanceTime(scenario(true), ONE_MINUTE_MS);

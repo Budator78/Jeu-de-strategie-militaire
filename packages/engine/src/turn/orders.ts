@@ -1,4 +1,6 @@
 import { produce } from "immer";
+import type { BuildingId } from "../state/BuildingTypes";
+import { BUILDING_TYPES } from "../state/BuildingTypes";
 import type { GameState } from "../state/GameState";
 import type { ResourceType } from "../state/ResourceTypes";
 import type { UnitTypeId } from "../state/UnitTypes";
@@ -21,7 +23,22 @@ export type Order =
       fromProvinceId: string;
       toProvinceId: string;
       completesAt: number;
+    }
+  | {
+      kind: "construct";
+      id: string;
+      ownerId: string;
+      provinceId: string;
+      buildingId: BuildingId;
+      completesAt: number;
     };
+
+function canAffordCost(
+  resources: Record<ResourceType, number>,
+  cost: Partial<Record<ResourceType, number>>,
+): boolean {
+  return Object.entries(cost).every(([resource, amount]) => resources[resource as ResourceType] >= (amount ?? 0));
+}
 
 /**
  * Queues a unit build in a city, paying its cost upfront. Only cities owned
@@ -42,9 +59,7 @@ export function issueBuildOrder(
   if (province.ownerId !== ownerId || !province.isCity) return state;
 
   const def = UNIT_TYPES[unitType];
-  for (const [resource, amount] of Object.entries(def.cost)) {
-    if (country.resources[resource as ResourceType] < (amount ?? 0)) return state;
-  }
+  if (!canAffordCost(country.resources, def.cost)) return state;
 
   return produce(state, (draft) => {
     const draftCountry = draft.countries[ownerId];
@@ -93,6 +108,48 @@ export function issueMoveOrder(
       fromProvinceId: unit.provinceId,
       toProvinceId,
       completesAt: draft.clockMs + def.moveTimeMs,
+    });
+  });
+}
+
+/**
+ * Queues a building's construction in a city, paying its cost upfront.
+ * Refuses if the building already exists there, one is already under
+ * construction there, or it's unaffordable.
+ */
+export function issueConstructOrder(
+  state: GameState,
+  orderId: string,
+  ownerId: string,
+  provinceId: string,
+  buildingId: BuildingId,
+): GameState {
+  const province = state.provinces[provinceId];
+  const country = state.countries[ownerId];
+  if (!province || !country) return state;
+  if (province.ownerId !== ownerId || !province.isCity) return state;
+  if (province.buildings.includes(buildingId)) return state;
+  const alreadyBuilding = state.pendingOrders.some(
+    (o) => o.kind === "construct" && o.provinceId === provinceId && o.buildingId === buildingId,
+  );
+  if (alreadyBuilding) return state;
+
+  const def = BUILDING_TYPES[buildingId];
+  if (!canAffordCost(country.resources, def.cost)) return state;
+
+  return produce(state, (draft) => {
+    const draftCountry = draft.countries[ownerId];
+    for (const [resource, amount] of Object.entries(def.cost)) {
+      const key = resource as ResourceType;
+      draftCountry.resources[key] -= amount ?? 0;
+    }
+    draft.pendingOrders.push({
+      kind: "construct",
+      id: orderId,
+      ownerId,
+      provinceId,
+      buildingId,
+      completesAt: draft.clockMs + def.buildTimeMs,
     });
   });
 }

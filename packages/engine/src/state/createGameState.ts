@@ -1,3 +1,4 @@
+import type { BuildingId } from "./BuildingTypes";
 import type { Country } from "./Country";
 import type { GameConfig, GameState } from "./GameState";
 import type { Province } from "./Province";
@@ -12,6 +13,7 @@ export interface ProvinceInput {
   isCity?: boolean;
   resources?: ResourceAmounts;
   victoryPoints?: number;
+  buildings?: BuildingId[];
 }
 
 export interface CountryInput {
@@ -40,6 +42,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
       isCity: p.isCity ?? false,
       resources: p.resources ?? { money: DEFAULT_PROVINCE_MONEY_YIELD },
       victoryPoints: p.victoryPoints ?? DEFAULT_PROVINCE_VP,
+      buildings: p.buildings ?? [],
     };
   }
 

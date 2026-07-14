@@ -1,5 +1,6 @@
 import { produce } from "immer";
 import type { GameState } from "../state/GameState";
+import type { Province } from "../state/Province";
 import { UNIT_TYPES } from "../state/UnitTypes";
 import { resolveCombat } from "./combatResolver";
 import type { Order } from "./orders";
@@ -14,6 +15,8 @@ export function processCompletedOrders(state: GameState): GameState {
     for (const order of dueOrders) {
       if (order.kind === "build") {
         applyBuildOrder(draft, order);
+      } else if (order.kind === "construct") {
+        applyConstructOrder(draft, order);
       } else {
         applyMoveOrder(draft, order);
       }
@@ -35,6 +38,20 @@ function applyBuildOrder(draft: GameState, order: Extract<Order, { kind: "build"
   };
 }
 
+function applyConstructOrder(draft: GameState, order: Extract<Order, { kind: "construct" }>): void {
+  const province = draft.provinces[order.provinceId];
+  if (!province || province.ownerId !== order.ownerId) return; // province lost while building
+  if (!province.buildings.includes(order.buildingId)) {
+    province.buildings.push(order.buildingId);
+  }
+}
+
+/** Buildings are destroyed on capture, per the source game (see wiki: Arms Industry). */
+function captureProvince(province: Province, newOwnerId: string): void {
+  province.ownerId = newOwnerId;
+  province.buildings = [];
+}
+
 function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }>): void {
   const unit = draft.units[order.unitId];
   if (!unit || unit.provinceId !== order.fromProvinceId) return; // unit gone or already relocated
@@ -54,7 +71,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   if (defenders.length === 0) {
     unit.provinceId = order.toProvinceId;
     if (UNIT_TYPES[unit.type].canCapture) {
-      destination.ownerId = unit.ownerId;
+      captureProvince(destination, unit.ownerId);
     }
     return;
   }
@@ -80,7 +97,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   if (outcome.defenders.length === 0) {
     unit.provinceId = order.toProvinceId;
     if (UNIT_TYPES[unit.type].canCapture) {
-      destination.ownerId = unit.ownerId;
+      captureProvince(destination, unit.ownerId);
     }
   }
   // else: attacker survived but defenders remain — bounced back, stays put.

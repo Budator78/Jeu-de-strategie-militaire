@@ -19,6 +19,12 @@ export interface UnitTypeDef {
   defense: number;
   health: number;
   canCapture: boolean;
+  /**
+   * Ongoing per-minute maintenance cost (per the wiki: "the more units your
+   * army has, the more you need to feed and supply them"). Without this, an
+   * AI (or player) can spam units forever with no economic pressure valve.
+   */
+  upkeepPerMin: ResourceAmounts;
 }
 
 export const UNIT_TYPES: Record<UnitTypeId, UnitTypeDef> = {
@@ -33,6 +39,7 @@ export const UNIT_TYPES: Record<UnitTypeId, UnitTypeDef> = {
     defense: 10,
     health: 100,
     canCapture: true,
+    upkeepPerMin: { supplies: 0.5, manpower: 0.2 },
   },
   tank: {
     id: "tank",
@@ -45,6 +52,7 @@ export const UNIT_TYPES: Record<UnitTypeId, UnitTypeDef> = {
     defense: 12,
     health: 100,
     canCapture: false,
+    upkeepPerMin: { fuel: 0.8, components: 0.2 },
   },
   fighter: {
     id: "fighter",
@@ -57,5 +65,6 @@ export const UNIT_TYPES: Record<UnitTypeId, UnitTypeDef> = {
     defense: 6,
     health: 100,
     canCapture: false,
+    upkeepPerMin: { fuel: 1.2, electronics: 0.3 },
   },
 };

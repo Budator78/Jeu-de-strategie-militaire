@@ -4,7 +4,9 @@ import {
   basicAI,
   createGameState,
   issueBuildOrder,
+  issueConstructOrder,
   issueMoveOrder,
+  type BuildingId,
   type GameState,
   type UnitTypeId,
 } from '@con/engine'
@@ -35,6 +37,7 @@ interface GameStore {
   setTimeScale: (timeScale: number) => void
   queueBuild: (provinceId: string, unitType: UnitTypeId) => void
   queueMove: (unitId: string, toProvinceId: string) => void
+  queueConstruct: (provinceId: string, buildingId: BuildingId) => void
   saveGame: () => void
   loadGame: () => void
   newGame: () => void
@@ -47,10 +50,13 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
     if (!country.isAI) continue
     for (const action of basicAI.decide(nextState, country.id)) {
       const id = `ai-order-${orderId++}`
-      nextState =
-        action.kind === 'build'
-          ? issueBuildOrder(nextState, id, country.id, action.provinceId, action.unitType)
-          : issueMoveOrder(nextState, id, country.id, action.unitId, action.toProvinceId)
+      if (action.kind === 'build') {
+        nextState = issueBuildOrder(nextState, id, country.id, action.provinceId, action.unitType)
+      } else if (action.kind === 'construct') {
+        nextState = issueConstructOrder(nextState, id, country.id, action.provinceId, action.buildingId)
+      } else {
+        nextState = issueMoveOrder(nextState, id, country.id, action.unitId, action.toProvinceId)
+      }
     }
   }
   return { state: nextState, nextOrderId: orderId }
@@ -108,6 +114,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((s) => ({
       nextOrderId: s.nextOrderId + 1,
       state: issueMoveOrder(s.state, orderId, HUMAN_COUNTRY_ID, unitId, toProvinceId),
+    }))
+  },
+  queueConstruct: (provinceId, buildingId) => {
+    const orderId = `order-${get().nextOrderId}`
+    set((s) => ({
+      nextOrderId: s.nextOrderId + 1,
+      state: issueConstructOrder(s.state, orderId, HUMAN_COUNTRY_ID, provinceId, buildingId),
     }))
   },
   saveGame: () => {

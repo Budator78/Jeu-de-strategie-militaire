@@ -1,3 +1,4 @@
+import { BUILDING_TYPES, type BuildingId } from "../state/BuildingTypes";
 import type { GameState } from "../state/GameState";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES, type UnitTypeId } from "../state/UnitTypes";
@@ -5,6 +6,8 @@ import type { AIAction, AIStrategy } from "./types";
 
 /** Infantry first (only infantry can capture territory), then armor, then air. */
 const BUILD_PREFERENCE: UnitTypeId[] = ["infantry", "tank", "fighter"];
+/** Arms Industry boosts every resource; build it before the narrower Recruiting Office. */
+const CONSTRUCT_PREFERENCE: BuildingId[] = ["armsIndustry", "recruitingOffice"];
 
 function canAfford(
   resources: Record<ResourceType, number>,
@@ -15,6 +18,10 @@ function canAfford(
 
 function hasPendingBuild(state: GameState, provinceId: string): boolean {
   return state.pendingOrders.some((o) => o.kind === "build" && o.provinceId === provinceId);
+}
+
+function hasPendingConstruction(state: GameState, provinceId: string): boolean {
+  return state.pendingOrders.some((o) => o.kind === "construct" && o.provinceId === provinceId);
 }
 
 function isUnitIdle(state: GameState, unitId: string): boolean {
@@ -31,8 +38,9 @@ function countDefenders(state: GameState, provinceId: string, notOwnedBy: string
 
 /**
  * A simple, deterministic AI: build the highest-preference affordable unit
- * in each idle city, and send idle units to attack/annex the weakest-looking
- * adjacent non-owned province (fewest defenders first).
+ * and construct the highest-preference affordable building in each idle
+ * city, and send idle units to attack/annex the weakest-looking adjacent
+ * non-owned province (fewest defenders first).
  */
 export const basicAI: AIStrategy = {
   decide(state, countryId) {
@@ -42,10 +50,21 @@ export const basicAI: AIStrategy = {
 
     for (const province of Object.values(state.provinces)) {
       if (province.ownerId !== countryId || !province.isCity) continue;
-      if (hasPendingBuild(state, province.id)) continue;
-      const unitType = BUILD_PREFERENCE.find((type) => canAfford(country.resources, UNIT_TYPES[type].cost));
-      if (unitType) {
-        actions.push({ kind: "build", provinceId: province.id, unitType });
+
+      if (!hasPendingBuild(state, province.id)) {
+        const unitType = BUILD_PREFERENCE.find((type) => canAfford(country.resources, UNIT_TYPES[type].cost));
+        if (unitType) {
+          actions.push({ kind: "build", provinceId: province.id, unitType });
+        }
+      }
+
+      if (!hasPendingConstruction(state, province.id)) {
+        const buildingId = CONSTRUCT_PREFERENCE.find(
+          (id) => !province.buildings.includes(id) && canAfford(country.resources, BUILDING_TYPES[id].cost),
+        );
+        if (buildingId) {
+          actions.push({ kind: "construct", provinceId: province.id, buildingId });
+        }
       }
     }
 

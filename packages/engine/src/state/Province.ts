@@ -1,4 +1,5 @@
 import type { ResourceAmounts } from "./ResourceTypes";
+import type { BuildingId } from "./BuildingTypes";
 
 export interface Province {
   id: string;
@@ -15,4 +16,6 @@ export interface Province {
   resources: ResourceAmounts;
   /** Per the source game: every non-city province is worth 1 VP; a city's VP depends on its population/buildings. */
   victoryPoints: number;
+  /** Constructed buildings (city-only per the wiki) — cleared when the province is captured. */
+  buildings: BuildingId[];
 }

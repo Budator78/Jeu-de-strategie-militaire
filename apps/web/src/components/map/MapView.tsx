@@ -210,6 +210,9 @@ export function MapView() {
               ))}
             </ul>
             <p>Neighbors: {(adjacency[selected.id] ?? []).length}</p>
+            {selectedState.isCity && (
+              <p>Buildings: {selectedState.buildings.length > 0 ? selectedState.buildings.join(', ') : 'none'}</p>
+            )}
             {unitsInSelectedProvince.length > 0 && (
               <ul className="unit-list">
                 {unitsInSelectedProvince.map((u) => (
