@@ -28,6 +28,64 @@ export function UnitIcon({ type }: { type: UnitTypeId }) {
           <path d="M16 4 L18 14 L28 18 L28 20 L18 18 L18 24 L22 27 L22 29 L16 27.5 L10 29 L10 27 L14 24 L14 18 L4 20 L4 18 L14 14 Z" fill="currentColor" />
         </svg>
       )
+    case 'nationalGuard':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <circle cx="16" cy="8" r="4" fill="currentColor" />
+          <path d="M10 28 L12 16 Q16 13.5 20 16 L22 28 L18 28 L17 21 L15 21 L14 28 Z" fill="currentColor" />
+          <path d="M22 6 h6 v5 q0 3 -3 4 q-3 -1 -3 -4 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'mechInfantry':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <circle cx="11" cy="7" r="3.4" fill="currentColor" />
+          <path d="M6 24 L8 14 Q11 12 14 14 L16 24 Z" fill="currentColor" />
+          <path d="M17 18 h11 l-3 6 h-8 Z" fill="currentColor" />
+          <circle cx="20" cy="26" r="2.2" fill="currentColor" />
+          <circle cx="25" cy="26" r="2.2" fill="currentColor" />
+        </svg>
+      )
+    case 'recon':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <path d="M4 20 L8 14 h12 l4 6 h4 v4 H2 v-4 Z" fill="currentColor" />
+          <rect x="11" y="10" width="6" height="5" fill="currentColor" />
+          <circle cx="9" cy="26" r="2.6" fill="currentColor" />
+          <circle cx="22" cy="26" r="2.6" fill="currentColor" />
+        </svg>
+      )
+    case 'afv':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <path d="M4 18 L9 13 h14 l5 5 v5 H4 Z" fill="currentColor" />
+          <rect x="13" y="8.5" width="7" height="6" rx="1" fill="currentColor" />
+          <rect x="18" y="10" width="9" height="2" fill="currentColor" />
+          <circle cx="9" cy="25" r="2.4" fill="currentColor" />
+          <circle cx="16" cy="25" r="2.4" fill="currentColor" />
+          <circle cx="23" cy="25" r="2.4" fill="currentColor" />
+        </svg>
+      )
+    case 'gunship':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <line x1="4" y1="8" x2="28" y2="8" stroke="currentColor" strokeWidth="2" />
+          <ellipse cx="15" cy="16" rx="8" ry="5" fill="currentColor" />
+          <path d="M22 15 h7 l-2 4 h-5 Z" fill="currentColor" />
+          <rect x="15" y="8" width="2" height="4" fill="currentColor" />
+          <path d="M8 23 h12 v2 H8 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'attackHelicopter':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <line x1="3" y1="7" x2="27" y2="7" stroke="currentColor" strokeWidth="2" />
+          <path d="M6 15 Q9 11 15 12 L26 13 L29 16 L26 18 L15 19 Q9 20 6 17 Z" fill="currentColor" />
+          <rect x="14" y="7" width="2" height="5" fill="currentColor" />
+          <path d="M8 19 l-2 5 h3 l2 -4 Z" fill="currentColor" />
+          <rect x="10" y="20" width="9" height="2" fill="currentColor" />
+        </svg>
+      )
     default:
       return null
   }

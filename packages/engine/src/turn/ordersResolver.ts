@@ -94,8 +94,14 @@ function declareWar(draft: GameState, attackerId: string, defenderId: string): v
   const attacker = draft.countries[attackerId];
   const defender = draft.countries[defenderId];
   const alreadyAtWar = attacker?.atWarWith.includes(defenderId) ?? false;
-  if (attacker && !alreadyAtWar) attacker.atWarWith.push(defenderId);
-  if (defender && !defender.atWarWith.includes(attackerId)) defender.atWarWith.push(attackerId);
+  if (attacker && !alreadyAtWar) {
+    attacker.atWarWith.push(defenderId);
+    attacker.stances[defenderId] = "war";
+  }
+  if (defender && !defender.atWarWith.includes(attackerId)) {
+    defender.atWarWith.push(attackerId);
+    defender.stances[attackerId] = "war";
+  }
   if (!alreadyAtWar) {
     logEvent(draft, { kind: "warDeclared", atMs: draft.clockMs, attackerId, defenderId });
   }
@@ -127,6 +133,14 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   }
 
   if (destination.ownerId !== null) {
+    const owner = draft.countries[destination.ownerId];
+    const atWar = owner?.atWarWith.includes(unit.ownerId) ?? false;
+    // Right of way: peaceful transit through a granter's land — no war,
+    // no combat, no capture (see turn/diplomacy.ts).
+    if (!atWar && owner?.stances[unit.ownerId] === "rightOfWay") {
+      unit.provinceId = order.toProvinceId;
+      return;
+    }
     declareWar(draft, unit.ownerId, destination.ownerId);
   }
 

@@ -23,7 +23,17 @@ const CITY_LABEL_MIN_ZOOM = 2
 const CITY_LABEL_FONT_SCREEN_PX = 8.5
 const STACK_SPACING_SCREEN_PX = 24
 
-const UNIT_GLYPH: Record<string, string> = { infantry: 'I', tank: 'T', fighter: 'F' }
+const UNIT_GLYPH: Record<string, string> = {
+  infantry: 'I',
+  nationalGuard: 'G',
+  mechInfantry: 'M',
+  recon: 'R',
+  afv: 'V',
+  tank: 'T',
+  gunship: 'H',
+  attackHelicopter: 'A',
+  fighter: 'F',
+}
 
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)

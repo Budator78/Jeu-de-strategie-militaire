@@ -15,7 +15,13 @@ export const RESOURCE_LABELS_FR: Record<ResourceType | 'gold', string> = {
 
 export const UNIT_LABELS_FR: Record<UnitTypeId, string> = {
   infantry: 'Infanterie motorisée',
+  nationalGuard: 'Garde nationale',
+  mechInfantry: 'Infanterie mécanisée',
+  recon: 'Véhicule de reconnaissance',
+  afv: "Véhicule de combat d'infanterie",
   tank: 'Char de combat',
+  gunship: 'Hélicoptère mitrailleur',
+  attackHelicopter: "Hélicoptère d'attaque",
   fighter: 'Chasseur de supériorité aérienne',
 }
 
@@ -92,6 +98,20 @@ export function eventToArticle(event: GameEvent, countryName: (id: string | null
         body: `${formatEventTime(event.atMs)} ${event.provinceName} : excédée par l'occupation, la population s'est soulevée contre ${countryName(event.occupierId)} — le territoire retourne à ${countryName(event.homelandId)}.`,
         category: 'politique',
         involved: [event.occupierId, event.homelandId],
+      }
+    case 'peaceMade':
+      return {
+        headline: 'Traité de paix signé',
+        body: `${formatEventTime(event.atMs)} — ${countryName(event.aId)} et ${countryName(event.bId)} ont mis fin aux hostilités et rétabli la paix.`,
+        category: 'politique',
+        involved: [event.aId, event.bId],
+      }
+    case 'rightOfWay':
+      return {
+        headline: event.granted ? 'Droit de passage accordé' : 'Droit de passage révoqué',
+        body: `${formatEventTime(event.atMs)} — ${countryName(event.granterId)} ${event.granted ? 'ouvre' : 'ferme'} ses frontières aux troupes de ${countryName(event.toId)}.`,
+        category: 'politique',
+        involved: [event.granterId, event.toId],
       }
   }
 }

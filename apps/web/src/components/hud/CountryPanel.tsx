@@ -27,9 +27,11 @@ function formatDayTime(clockMs: number): { day: number; time: string } {
 export function CountryPanel({
   onOpenResearch,
   onOpenJournal,
+  onOpenDiplomacy,
 }: {
   onOpenResearch: () => void
   onOpenJournal: () => void
+  onOpenDiplomacy: () => void
 }) {
   const country = useGameStore((s) => s.state.countries[HUMAN_COUNTRY_ID])
   const clockMs = useGameStore((s) => s.state.clockMs)
@@ -97,7 +99,7 @@ export function CountryPanel({
           <HudIcon name="research" />
           {pendingResearch > 0 && <span className="cp-badge cp-badge-red">{pendingResearch}</span>}
         </button>
-        <button type="button" className="cp-action-btn" title="Diplomatie">
+        <button type="button" className="cp-action-btn" title="Diplomatie" onClick={onOpenDiplomacy}>
           <HudIcon name="dove" />
         </button>
         <button type="button" className="cp-action-btn" title="Accords">

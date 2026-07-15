@@ -4,11 +4,14 @@ import {
   basicAI,
   boostMoraleWithGold,
   createGameState,
+  declareWarOn,
   executeMarketTrade,
   issueBuildOrder,
   issueConstructOrder,
   issueMoveOrder,
   issueResearchOrder,
+  makePeace,
+  setRightOfWay,
   writeArticle,
   type BuildingId,
   type GameState,
@@ -22,8 +25,8 @@ export const HUMAN_COUNTRY_ID = 'DEU'
 /** 1 real second = this many simulated seconds. The source game runs at 1x (real time). */
 export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
 
-// v3: Province grew morale/homelandOf fields — older saves are incompatible.
-const SAVE_KEY = 'con-like-save-v3'
+// v4: Country grew stances (diplomacy) — older saves are incompatible.
+const SAVE_KEY = 'con-like-save-v4'
 const AUTOSAVE_EVERY_N_TICKS = 20
 
 interface SaveFile {
@@ -48,6 +51,9 @@ interface GameStore {
   trade: (offerId: string) => void
   publishArticle: (title: string, body: string) => void
   boostMorale: (provinceId: string) => void
+  declareWar: (targetId: string) => void
+  offerPeace: (targetId: string) => void
+  grantPassage: (targetId: string, granted: boolean) => void
   saveGame: () => void
   loadGame: () => void
   newGame: () => void
@@ -156,6 +162,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
   boostMorale: (provinceId) => {
     set((s) => ({ state: boostMoraleWithGold(s.state, HUMAN_COUNTRY_ID, provinceId) }))
+  },
+  declareWar: (targetId) => {
+    set((s) => ({ state: declareWarOn(s.state, HUMAN_COUNTRY_ID, targetId) }))
+  },
+  offerPeace: (targetId) => {
+    set((s) => ({ state: makePeace(s.state, HUMAN_COUNTRY_ID, targetId) }))
+  },
+  grantPassage: (targetId, granted) => {
+    set((s) => ({ state: setRightOfWay(s.state, HUMAN_COUNTRY_ID, targetId, granted) }))
   },
   saveGame: () => {
     const s = get()

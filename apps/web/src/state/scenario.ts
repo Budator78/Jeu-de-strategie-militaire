@@ -1,9 +1,22 @@
 import type { CreateGameStateInput, ResourceAmounts, ResourceType, UnitTypeId } from '@con/engine'
 import { adjacency, provinceFeatures } from '../data/geoData'
 
+/**
+ * Display names for the countries mapped at admin-1 detail (their features
+ * are regions, so features[0].name_en would be a region name, not the
+ * country). Rest-of-world countries are single admin-0 features whose own
+ * name_en is already correct.
+ */
 const COUNTRY_NAMES: Record<string, string> = {
   DEU: 'Germany',
   FRA: 'France',
+  POL: 'Poland',
+  BEL: 'Belgium',
+  NLD: 'Netherlands',
+  LUX: 'Luxembourg',
+  CZE: 'Czech Republic',
+  AUT: 'Austria',
+  CHE: 'Switzerland',
 }
 
 /**

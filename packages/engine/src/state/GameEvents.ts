@@ -34,7 +34,9 @@ export type GameEvent =
       provinceName: string;
       occupierId: string;
       homelandId: string;
-    };
+    }
+  | { kind: "peaceMade"; atMs: number; aId: string; bId: string }
+  | { kind: "rightOfWay"; atMs: number; granterId: string; toId: string; granted: boolean };
 
 export const MAX_EVENTS = 300;
 

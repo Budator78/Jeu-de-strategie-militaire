@@ -970,6 +970,208 @@
   cursor: not-allowed;
 }
 
+/* ---------- Diplomacy ---------- */
+
+.diplo-modal {
+  width: min(980px, 97vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #2b3540;
+  color: #dfe7ea;
+  border: 1px solid #171f26;
+  border-radius: 4px;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.6);
+}
+
+.diplo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.7rem 1rem;
+  color: #26313a;
+  background:
+    linear-gradient(105deg, #f2f4f5 55%, rgba(242, 244, 245, 0.85) 70%, rgba(215, 224, 230, 0.9) 100%),
+    repeating-linear-gradient(60deg, transparent 0 16px, rgba(140, 160, 175, 0.25) 16px 17px),
+    repeating-linear-gradient(-60deg, transparent 0 16px, rgba(140, 160, 175, 0.25) 16px 17px),
+    #e8edf0;
+}
+
+.diplo-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.diplo-tabs {
+  display: flex;
+  gap: 2px;
+  background: #f2f4f5;
+  padding: 0 0.7rem;
+}
+
+.diplo-tabs button {
+  background: #232c34;
+  border: 1px solid #10161b;
+  border-bottom: none;
+  border-radius: 3px 3px 0 0;
+  padding: 0.45rem 1.2rem 0.45rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #cfd9de;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+}
+
+.diplo-tabs button.active {
+  background: #fff;
+  color: #1c242c;
+}
+
+.diplo-searchbar {
+  padding: 0.5rem 0.7rem;
+  background: #f2f4f5;
+}
+
+.diplo-searchbar input {
+  width: 240px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid #b8c0c6;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.diplo-table-wrap {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.diplo-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.diplo-table th {
+  position: sticky;
+  top: 0;
+  background: #55636e;
+  color: #eef2f4;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #2b353d;
+}
+
+.diplo-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid #38444f;
+}
+
+.diplo-table tbody tr:nth-child(odd) {
+  background: #232c34;
+}
+
+.diplo-table tbody tr:nth-child(even) {
+  background: #2b3540;
+}
+
+.diplo-flag {
+  display: inline-block;
+  width: 22px;
+  height: 14px;
+  border: 1px solid #10161b;
+  margin-right: 0.5rem;
+  vertical-align: -2px;
+}
+
+.diplo-nation {
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.diplo-leader {
+  color: #cfd9de;
+}
+
+.diplo-num {
+  text-align: right;
+  font-weight: 600;
+}
+
+.diplo-center {
+  text-align: center;
+}
+
+.stance-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 3px;
+  border: 1px solid #10161b;
+}
+
+.stance-peace {
+  background: #4a7c59;
+  color: #eaf5ec;
+}
+
+.stance-war {
+  background: #b53a2e;
+  color: #fdecea;
+}
+
+.stance-row {
+  background: #3f7fb5;
+  color: #eaf3fa;
+}
+
+.diplo-your-relation {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.diplo-your-relation select {
+  background: #38444f;
+  color: #dfe7ea;
+  border: 1px solid #171f26;
+  border-radius: 3px;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.25rem;
+  cursor: pointer;
+}
+
+.diplo-playertype {
+  font-size: 0.72rem;
+  color: #9aa7b0;
+}
+
+.diplo-mail {
+  width: 28px;
+  height: 24px;
+  background: #3f7fb5;
+  color: #fff;
+  border: 1px solid #2b587e;
+  border-radius: 3px;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.diplo-messages {
+  padding: 1.2rem;
+  font-size: 0.85rem;
+  color: #9aa7b0;
+  min-height: 120px;
+}
+
 /* ---------- Newspaper ---------- */
 
 .news-modal {

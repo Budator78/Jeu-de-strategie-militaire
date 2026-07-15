@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CountryPanel } from './components/hud/CountryPanel'
+import { DiplomacyModal } from './components/hud/DiplomacyModal'
 import { LeftEdgeTabs, RightEdgeTab } from './components/hud/EdgeTabs'
 import { GameOverModal } from './components/hud/GameOverModal'
 import { GoldTimer } from './components/hud/GoldTimer'
@@ -16,12 +17,17 @@ function App() {
   const [researchOpen, setResearchOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [journalOpen, setJournalOpen] = useState(false)
+  const [diplomacyOpen, setDiplomacyOpen] = useState(false)
 
   return (
     <div className="game-root">
       <MapView onOpenSettings={() => setSettingsOpen(true)} />
       <ResourceBar />
-      <CountryPanel onOpenResearch={() => setResearchOpen(true)} onOpenJournal={() => setJournalOpen(true)} />
+      <CountryPanel
+        onOpenResearch={() => setResearchOpen(true)}
+        onOpenJournal={() => setJournalOpen(true)}
+        onOpenDiplomacy={() => setDiplomacyOpen(true)}
+      />
       <LeftEdgeTabs />
       <RightEdgeTab />
       <PortraitBadge />
@@ -29,6 +35,7 @@ function App() {
       {settingsOpen && <SettingsDrawer onClose={() => setSettingsOpen(false)} />}
       {researchOpen && <ResearchModal onClose={() => setResearchOpen(false)} />}
       {journalOpen && <NewspaperModal onClose={() => setJournalOpen(false)} />}
+      {diplomacyOpen && <DiplomacyModal onClose={() => setDiplomacyOpen(false)} />}
       <GameOverModal />
     </div>
   )

@@ -86,6 +86,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
       capitalProvinceId: c.capitalProvinceId,
       alive: true,
       atWarWith: [],
+      stances: {},
     };
   }
 

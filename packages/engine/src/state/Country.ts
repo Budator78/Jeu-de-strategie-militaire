@@ -1,6 +1,13 @@
 import type { ResearchId } from "./ResearchTypes";
 import type { ResourceType } from "./ResourceTypes";
 
+/**
+ * One country's declared posture toward another (sparse map, defaults to
+ * "peace"). "rightOfWay" grants the OTHER country peaceful passage through
+ * this country's territory — see turn/diplomacy.ts and ordersResolver.ts.
+ */
+export type DiplomaticStance = "peace" | "war" | "rightOfWay";
+
 export interface Country {
   id: string;
   name: string;
@@ -22,4 +29,10 @@ export interface Country {
    * unprovoked — see turn/ordersResolver.ts, ai/basicAI.ts.
    */
   atWarWith: string[];
+  /**
+   * Declared postures toward specific countries (sparse; anything absent is
+   * "peace"). Kept in sync with atWarWith when wars start/end — see
+   * turn/diplomacy.ts.
+   */
+  stances: Record<string, DiplomaticStance>;
 }

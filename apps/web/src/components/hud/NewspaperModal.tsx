@@ -4,20 +4,13 @@ import { computeNetIncomePerMinute, computeVictoryPoints } from '@con/engine'
 import { featureCollection, provinceFeatures } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { eventToArticle, formatEventTime } from '../../i18n/fr'
+import { countryColor } from '../../utils/countryColor'
 import './hud.css'
 
 const MINI_W = 300
 const MINI_H = 170
 const miniProjection = geoNaturalEarth1().fitSize([MINI_W, MINI_H], featureCollection as never)
 const miniPath = geoPath(miniProjection)
-
-/** Deterministic political-map color per country id. */
-function countryColor(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
-  const hue = ((hash % 360) + 360) % 360
-  return `hsl(${hue}, 48%, 52%)`
-}
 
 type IndexTab = 'nations' | 'alliances' | 'stats'
 type FeedFilter = 'tout' | 'moi' | 'ennemis' | 'politique' | 'economie'
