@@ -3,10 +3,12 @@ import {
   advanceTime,
   basicAI,
   createGameState,
+  executeMarketTrade,
   issueBuildOrder,
   issueConstructOrder,
   issueMoveOrder,
   issueResearchOrder,
+  writeArticle,
   type BuildingId,
   type GameState,
   type ResearchId,
@@ -19,7 +21,8 @@ export const HUMAN_COUNTRY_ID = 'DEU'
 /** 1 real second = this many simulated seconds. The source game runs at 1x (real time). */
 export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
 
-const SAVE_KEY = 'con-like-save-v1'
+// v2: GameState grew market/events/articles fields — older saves are incompatible.
+const SAVE_KEY = 'con-like-save-v2'
 const AUTOSAVE_EVERY_N_TICKS = 20
 
 interface SaveFile {
@@ -41,6 +44,8 @@ interface GameStore {
   queueMove: (unitId: string, toProvinceId: string) => void
   queueConstruct: (provinceId: string, buildingId: BuildingId) => void
   queueResearch: (researchId: ResearchId) => void
+  trade: (offerId: string) => void
+  publishArticle: (title: string, body: string) => void
   saveGame: () => void
   loadGame: () => void
   newGame: () => void
@@ -135,6 +140,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set((s) => ({
       nextOrderId: s.nextOrderId + 1,
       state: issueResearchOrder(s.state, orderId, HUMAN_COUNTRY_ID, researchId),
+    }))
+  },
+  trade: (offerId) => {
+    set((s) => ({ state: executeMarketTrade(s.state, HUMAN_COUNTRY_ID, offerId) }))
+  },
+  publishArticle: (title, body) => {
+    const articleId = `article-${get().nextOrderId}`
+    set((s) => ({
+      nextOrderId: s.nextOrderId + 1,
+      state: writeArticle(s.state, articleId, HUMAN_COUNTRY_ID, title, body),
     }))
   },
   saveGame: () => {

@@ -24,7 +24,13 @@ function formatDayTime(clockMs: number): { day: number; time: string } {
   return { day, time: `${hh}:${mm}` }
 }
 
-export function CountryPanel({ onOpenResearch }: { onOpenResearch: () => void }) {
+export function CountryPanel({
+  onOpenResearch,
+  onOpenJournal,
+}: {
+  onOpenResearch: () => void
+  onOpenJournal: () => void
+}) {
   const country = useGameStore((s) => s.state.countries[HUMAN_COUNTRY_ID])
   const clockMs = useGameStore((s) => s.state.clockMs)
   const vp = useGameStore((s) => computeVictoryPoints(s.state, HUMAN_COUNTRY_ID))
@@ -84,9 +90,8 @@ export function CountryPanel({ onOpenResearch }: { onOpenResearch: () => void })
         </div>
       </div>
       <div className="country-panel-actions">
-        <button type="button" className="cp-action-btn" title="Journal">
+        <button type="button" className="cp-action-btn" title="Journal" onClick={onOpenJournal}>
           <HudIcon name="newspaper" />
-          <span className="cp-badge cp-badge-blue">1</span>
         </button>
         <button type="button" className="cp-action-btn cp-action-active" title="Recherche" onClick={onOpenResearch}>
           <HudIcon name="research" />

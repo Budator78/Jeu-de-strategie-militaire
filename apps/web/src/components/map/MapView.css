@@ -256,6 +256,275 @@
   font-weight: bold;
 }
 
+.move-hint-floating {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  z-index: 26;
+  background: #232c34f0;
+  border: 1px solid #171f26;
+  border-radius: 3px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.75rem;
+  color: #e5b93c;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* ---------- City panel (bottom-center, reference layout) ---------- */
+
+.city-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 25;
+  width: min(760px, 96vw);
+  background: #2b3540f5;
+  border: 1px solid #171f26;
+  border-radius: 4px;
+  color: #dfe7ea;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+}
+
+.city-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: #f2f4f5;
+  color: #26313a;
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px 4px 0 0;
+}
+
+.city-panel-title {
+  flex: 1;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+}
+
+.city-panel-kind {
+  font-size: 0.9rem;
+  color: #4a565f;
+}
+
+.city-panel-body {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding: 0.7rem 2rem;
+  align-items: stretch;
+}
+
+.city-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 44px;
+  background: #c9762c;
+  color: #fff;
+  border: 1px solid #8a4e1a;
+  border-radius: 3px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.city-arrow:hover {
+  background: #da8639;
+}
+
+.city-arrow-left {
+  left: 2px;
+}
+
+.city-arrow-right {
+  right: 2px;
+}
+
+.city-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.city-block-photo {
+  flex: 0 0 170px;
+}
+
+.city-photo {
+  height: 70px;
+  border: 1px solid #171f26;
+  overflow: hidden;
+}
+
+.city-subhead {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #9aa7b0;
+}
+
+.city-production {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.city-production svg {
+  width: 16px;
+  height: 16px;
+  vertical-align: -3px;
+}
+
+.city-morale {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.city-morale-bar {
+  flex: 1;
+  height: 12px;
+  background: #1a2229;
+  border: 1px solid #171f26;
+}
+
+.city-morale-fill {
+  height: 100%;
+  background: #9fc3dd;
+}
+
+.city-morale-value {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.city-block-info {
+  flex: 0 0 190px;
+}
+
+.city-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  border-bottom: 1px solid #38444f;
+  padding: 0.15rem 0;
+}
+
+.city-info-label {
+  color: #9aa7b0;
+}
+
+.city-info-value {
+  font-weight: 700;
+}
+
+.city-garrison {
+  margin-top: 0.3rem;
+  font-size: 0.68rem;
+  color: #9aa7b0;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+.city-block-buildings {
+  flex: 1 1 auto;
+}
+
+.city-building-slots {
+  display: flex;
+  gap: 14px;
+  padding: 0.4rem 0.2rem;
+}
+
+.city-building-slot {
+  width: 44px;
+  height: 44px;
+  transform: rotate(45deg);
+  border: 1.5px solid #55636e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: 6px;
+}
+
+.city-building-slot.filled {
+  background: #38444f;
+}
+
+.city-building-slot.filled svg {
+  transform: rotate(-45deg);
+  width: 26px;
+  height: 26px;
+  color: #c8d2d8;
+}
+
+.city-building-slot.empty {
+  color: #55636e;
+  font-size: 1.2rem;
+}
+
+.city-building-level {
+  position: absolute;
+  bottom: -9px;
+  left: -9px;
+  transform: rotate(-45deg);
+  background: #7ec14f;
+  color: #10161b;
+  border-radius: 50%;
+  width: 17px;
+  height: 17px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+
+.city-block-actions {
+  flex: 0 0 auto;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.city-action-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.city-plus {
+  width: 42px;
+  height: 42px;
+  font-size: 1.4rem;
+  background: #4a6d8c;
+  color: #fff;
+  border: 1px solid #2b4356;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.city-plus:hover {
+  background: #57809f;
+}
+
+.city-action-side {
+  max-width: 90px;
+}
+
+.city-side-note {
+  font-size: 0.62rem;
+  color: #9aa7b0;
+  text-align: center;
+}
+
 .production-buttons {
   display: flex;
   gap: 0.5rem;

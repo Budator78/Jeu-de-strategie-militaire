@@ -7,10 +7,9 @@ import type { Unit } from '@con/engine'
 import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
-import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
-import { BuildUnitModal } from '../hud/BuildUnitModal'
-import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
+import { RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
 import { HudIcon } from '../hud/icons'
+import { CityPanel } from './CityPanel'
 import './MapView.css'
 
 const WIDTH = 900
@@ -72,8 +71,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedStackKey, setSelectedStackKey] = useState<string | null>(null)
   const [zoomScale, setZoomScale] = useState(1)
-  const [buildUnitOpen, setBuildUnitOpen] = useState(false)
-  const [constructOpen, setConstructOpen] = useState(false)
   const provinces = useGameStore((s) => s.state.provinces)
   const countries = useGameStore((s) => s.state.countries)
   const units = useGameStore((s) => s.state.units)
@@ -220,8 +217,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     }
     setSelectedStackKey(null)
     setSelectedId(provinceId)
-    setBuildUnitOpen(false)
-    setConstructOpen(false)
   }
 
   function handleStackClick(stack: UnitStack, event: React.MouseEvent) {
@@ -332,20 +327,19 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </button>
       </div>
 
-      {selected && selectedState && (
+      {selected && selectedState && selectedState.isCity && (
+        <CityPanel province={selectedState} onClose={() => setSelectedId(null)} onSelectProvince={setSelectedId} />
+      )}
+
+      {selected && selectedState && !selectedState.isCity && (
         <div className="province-panel">
           <div className="province-panel-header">
-            <h2>
-              {selected.properties.name_en}
-              {CITY_SIZE[selected.id] !== undefined ? `(${CITY_SIZE[selected.id]})` : ''}
-            </h2>
+            <h2>{selected.properties.name_en}</h2>
             <button type="button" className="modal-close" onClick={() => setSelectedId(null)} aria-label="Fermer">
               ×
             </button>
           </div>
-          <p className="province-kind">
-            {selectedState.isCity ? 'Ville' : 'Province'} · {selectedOwner ? selectedOwner.name : 'Territoire libre'}
-          </p>
+          <p className="province-kind">Province · {selectedOwner ? selectedOwner.name : 'Territoire libre'}</p>
           <ul className="yields">
             {Object.entries(selectedState.resources).map(([resource, amount]) => (
               <li key={resource}>
@@ -353,14 +347,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               </li>
             ))}
           </ul>
-          {selectedState.isCity && (
-            <p className="province-buildings">
-              Bâtiments :{' '}
-              {selectedState.buildings.length > 0
-                ? selectedState.buildings.map((b) => BUILDING_LABELS_FR[b]).join(', ')
-                : 'aucun'}
-            </p>
-          )}
           {unitsInSelectedProvince.length > 0 && (
             <ul className="unit-list">
               {unitsInSelectedProvince.map((u) => (
@@ -370,29 +356,13 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               ))}
             </ul>
           )}
-          {selectedState.isCity && selectedState.ownerId === HUMAN_COUNTRY_ID && (
-            <div className="production-buttons">
-              <button type="button" onClick={() => setBuildUnitOpen(true)}>
-                Recruter une unité
-              </button>
-              <button type="button" onClick={() => setConstructOpen(true)}>
-                Construire un bâtiment
-              </button>
-            </div>
-          )}
-          {selectedStack && (
-            <p className="move-hint">
-              Pile de {selectedStack.units.length} sélectionnée — cliquez une province surlignée pour la déplacer.
-            </p>
-          )}
         </div>
       )}
 
-      {buildUnitOpen && selected && (
-        <BuildUnitModal provinceId={selected.id} onClose={() => setBuildUnitOpen(false)} />
-      )}
-      {constructOpen && selected && (
-        <ConstructBuildingModal provinceId={selected.id} onClose={() => setConstructOpen(false)} />
+      {selectedStack && (
+        <p className="move-hint move-hint-floating">
+          Pile de {selectedStack.units.length} sélectionnée — cliquez une province surlignée pour la déplacer.
+        </p>
       )}
     </div>
   )

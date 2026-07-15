@@ -1,7 +1,8 @@
 import { produce } from "immer";
+import { MAX_EVENTS, type GameEvent } from "../state/GameEvents";
 import type { GameState } from "../state/GameState";
-import type { Province } from "../state/Province";
 import { RESEARCH_TYPES } from "../state/ResearchTypes";
+import type { Unit } from "../state/Unit";
 import { UNIT_TYPES } from "../state/UnitTypes";
 import { resolveCombat } from "./combatResolver";
 import type { Order } from "./orders";
@@ -24,7 +25,14 @@ export function processCompletedOrders(state: GameState): GameState {
         applyMoveOrder(draft, order);
       }
     }
+    if (draft.events.length > MAX_EVENTS) {
+      draft.events.splice(0, draft.events.length - MAX_EVENTS);
+    }
   });
+}
+
+function logEvent(draft: GameState, event: GameEvent): void {
+  draft.events.push(event);
 }
 
 function applyBuildOrder(draft: GameState, order: Extract<Order, { kind: "build" }>): void {
@@ -64,17 +72,44 @@ function applyResearchOrder(draft: GameState, order: Extract<Order, { kind: "res
 }
 
 /** Buildings are destroyed on capture, per the source game (see wiki: Arms Industry). */
-function captureProvince(province: Province, newOwnerId: string): void {
+function captureProvince(draft: GameState, provinceId: string, newOwnerId: string): void {
+  const province = draft.provinces[provinceId];
+  if (!province) return;
+  logEvent(draft, {
+    kind: "provinceCaptured",
+    atMs: draft.clockMs,
+    provinceId,
+    provinceName: province.name,
+    fromId: province.ownerId,
+    toId: newOwnerId,
+  });
   province.ownerId = newOwnerId;
   province.buildings = [];
 }
 
 /** Attacking (or capturing) another country's territory puts both sides at war — see ai/basicAI.ts. */
-function declareWar(draft: GameState, aId: string, bId: string): void {
-  const a = draft.countries[aId];
-  const b = draft.countries[bId];
-  if (a && !a.atWarWith.includes(bId)) a.atWarWith.push(bId);
-  if (b && !b.atWarWith.includes(aId)) b.atWarWith.push(aId);
+function declareWar(draft: GameState, attackerId: string, defenderId: string): void {
+  const attacker = draft.countries[attackerId];
+  const defender = draft.countries[defenderId];
+  const alreadyAtWar = attacker?.atWarWith.includes(defenderId) ?? false;
+  if (attacker && !alreadyAtWar) attacker.atWarWith.push(defenderId);
+  if (defender && !defender.atWarWith.includes(attackerId)) defender.atWarWith.push(attackerId);
+  if (!alreadyAtWar) {
+    logEvent(draft, { kind: "warDeclared", atMs: draft.clockMs, attackerId, defenderId });
+  }
+}
+
+function logUnitDestroyed(draft: GameState, unit: Unit, byId: string): void {
+  const province = draft.provinces[unit.provinceId];
+  logEvent(draft, {
+    kind: "unitDestroyed",
+    atMs: draft.clockMs,
+    provinceId: unit.provinceId,
+    provinceName: province?.name ?? unit.provinceId,
+    unitType: unit.type,
+    ownerId: unit.ownerId,
+    byId,
+  });
 }
 
 function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }>): void {
@@ -100,7 +135,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   if (defenders.length === 0) {
     unit.provinceId = order.toProvinceId;
     if (UNIT_TYPES[unit.type].canCapture) {
-      captureProvince(destination, unit.ownerId);
+      captureProvince(draft, order.toProvinceId, unit.ownerId);
     }
     return;
   }
@@ -113,11 +148,13 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
     if (surviving) {
       draft.units[defender.id].health = surviving.health;
     } else {
+      logUnitDestroyed(draft, defender, unit.ownerId);
       delete draft.units[defender.id];
     }
   }
 
   if (!outcome.attackerSurvived) {
+    logUnitDestroyed(draft, unit, defenders[0]?.ownerId ?? "?");
     delete draft.units[unit.id];
     return;
   }
@@ -126,7 +163,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
   if (outcome.defenders.length === 0) {
     unit.provinceId = order.toProvinceId;
     if (UNIT_TYPES[unit.type].canCapture) {
-      captureProvince(destination, unit.ownerId);
+      captureProvince(draft, order.toProvinceId, unit.ownerId);
     }
   }
   // else: attacker survived but defenders remain — bounced back, stays put.

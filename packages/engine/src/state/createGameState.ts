@@ -1,6 +1,7 @@
 import type { BuildingId } from "./BuildingTypes";
 import type { Country } from "./Country";
 import type { GameConfig, GameState } from "./GameState";
+import { createDefaultMarketOffers } from "./MarketTypes";
 import type { Province } from "./Province";
 import type { ResourceAmounts } from "./ResourceTypes";
 import type { Unit } from "./Unit";
@@ -103,6 +104,9 @@ export function createGameState(input: CreateGameStateInput): GameState {
     units,
     pendingOrders: [],
     rngState: input.rngSeed ?? 1,
+    market: createDefaultMarketOffers(),
+    events: [],
+    articles: [],
     config: { unlimitedGold: true, victoryPointTarget: DEFAULT_VICTORY_POINT_TARGET, ...input.config },
   };
 }

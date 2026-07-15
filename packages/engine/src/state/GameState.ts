@@ -1,4 +1,6 @@
 import type { Country } from "./Country";
+import type { Article, GameEvent } from "./GameEvents";
+import type { MarketOffer } from "./MarketTypes";
 import type { Province } from "./Province";
 import type { Unit } from "./Unit";
 import type { Order } from "../turn/orders";
@@ -23,5 +25,11 @@ export interface GameState {
   pendingOrders: Order[];
   /** Combat RNG state (see utils/rng.ts) — evolves each time combat is resolved. */
   rngState: number;
+  /** System market ladder — see state/MarketTypes.ts and turn/market.ts. */
+  market: MarketOffer[];
+  /** Newspaper feed: wars, captures, losses, trades — see state/GameEvents.ts. */
+  events: GameEvent[];
+  /** Player-written newspaper articles. */
+  articles: Article[];
   config: GameConfig;
 }
