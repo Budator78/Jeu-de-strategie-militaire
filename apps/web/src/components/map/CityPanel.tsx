@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react'
-import type { Province, ResourceType } from '@con/engine'
+import {
+  CITY_HEAL_PER_DAY,
+  MORALE_BOOST_AMOUNT,
+  MORALE_BOOST_GOLD_COST,
+  provinceYieldMultiplier,
+  type Province,
+  type ResourceType,
+} from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
@@ -41,8 +48,6 @@ function SmileyGlyph() {
   )
 }
 
-const MORALE_DISPLAY = 75
-
 export function CityPanel({
   province,
   onClose,
@@ -55,11 +60,16 @@ export function CityPanel({
   const countries = useGameStore((s) => s.state.countries)
   const provinces = useGameStore((s) => s.state.provinces)
   const units = useGameStore((s) => s.state.units)
+  const boostMorale = useGameStore((s) => s.boostMorale)
+  const humanGold = useGameStore((s) => s.state.countries[HUMAN_COUNTRY_ID]?.gold ?? 0)
   const [buildUnitOpen, setBuildUnitOpen] = useState(false)
   const [constructOpen, setConstructOpen] = useState(false)
 
   const owner = province.ownerId ? countries[province.ownerId] : null
   const isHomeCity = province.ownerId === HUMAN_COUNTRY_ID
+  const isOccupied = province.ownerId !== province.homelandOf
+  const morale = Math.round(province.morale)
+  const canBoost = isHomeCity && morale < 100 && humanGold >= MORALE_BOOST_GOLD_COST
 
   const humanCities = useMemo(
     () => Object.values(provinces).filter((p) => p.isCity && p.ownerId === HUMAN_COUNTRY_ID).map((p) => p.id),
@@ -73,9 +83,13 @@ export function CityPanel({
     onSelectProvince(humanCities[next])
   }
 
-  // Top three daily yields (per-minute rate × 24h), like PRODUCTION QUOTID.
+  // Top three effective daily yields (per-minute rate × morale/occupation × 24h).
+  const yieldMultiplier = provinceYieldMultiplier(province)
   const dailyProduction = Object.entries(province.resources)
-    .map(([resource, perMin]) => ({ resource: resource as ResourceType, perDay: Math.round((perMin ?? 0) * 1440) }))
+    .map(([resource, perMin]) => ({
+      resource: resource as ResourceType,
+      perDay: Math.round((perMin ?? 0) * yieldMultiplier * 1440),
+    }))
     .sort((a, b) => b.perDay - a.perDay)
     .slice(0, 3)
 
@@ -87,7 +101,9 @@ export function CityPanel({
         <span className="city-panel-title">
           <strong>{province.name.toUpperCase()}</strong>&nbsp;({owner?.name ?? 'Territoire libre'})
         </span>
-        <span className="city-panel-kind">{isHomeCity ? 'Patrie Ville' : 'Ville'}</span>
+        <span className="city-panel-kind">
+          {isHomeCity ? (isOccupied ? 'Ville occupée' : 'Patrie Ville') : 'Ville'}
+        </span>
         <button type="button" className="market-close" onClick={onClose} aria-label="Fermer">
           X
         </button>
@@ -113,10 +129,25 @@ export function CityPanel({
           <div className="city-subhead">MORAL</div>
           <div className="city-morale">
             <div className="city-morale-bar">
-              <div className="city-morale-fill" style={{ width: `${MORALE_DISPLAY}%` }} />
+              <div
+                className={`city-morale-fill ${morale < 35 ? 'low' : ''}`}
+                style={{ width: `${morale}%` }}
+              />
             </div>
-            <span className="city-morale-value">{MORALE_DISPLAY} %</span>
-            <SmileyGlyph />
+            <span className="city-morale-value">{morale} %</span>
+            <button
+              type="button"
+              className="city-morale-boost"
+              disabled={!canBoost}
+              onClick={() => boostMorale(province.id)}
+              title={
+                isHomeCity
+                  ? `+${MORALE_BOOST_AMOUNT} moral pour ${MORALE_BOOST_GOLD_COST} or`
+                  : 'Réservé au propriétaire'
+              }
+            >
+              <SmileyGlyph />
+            </button>
           </div>
         </div>
         <div className="city-block city-block-info">
@@ -131,7 +162,7 @@ export function CityPanel({
           </div>
           <div className="city-info-row">
             <span className="city-info-label">Valeur de guérison</span>
-            <span className="city-info-value">1 PV/jour</span>
+            <span className="city-info-value">{CITY_HEAL_PER_DAY} pv/jour</span>
           </div>
           <div className="city-info-row">
             <span className="city-info-label">Bonus défensif</span>
@@ -174,9 +205,16 @@ export function CityPanel({
             </div>
             <div className="city-action-col">
               <div className="city-subhead">MOBILISATION</div>
-              <button type="button" className="city-plus" onClick={() => setBuildUnitOpen(true)} title="Recruter une unité">
+              <button
+                type="button"
+                className="city-plus"
+                disabled={isOccupied}
+                onClick={() => setBuildUnitOpen(true)}
+                title={isOccupied ? 'Ville occupée — mobilisation impossible' : 'Recruter une unité'}
+              >
                 +
               </button>
+              {isOccupied && <div className="city-side-note">Ville occupée</div>}
             </div>
             <div className="city-action-col city-action-side">
               <div className="city-side-note">0 agent</div>

@@ -2,6 +2,7 @@ import type { GameState } from "../state/GameState";
 import { checkWinConditions } from "../rules/winConditions";
 import { resolveEconomy } from "./economyResolver";
 import { applyGoldConfig } from "./goldResolver";
+import { resolveMorale } from "./moraleResolver";
 import { processCompletedOrders } from "./ordersResolver";
 
 /**
@@ -10,8 +11,9 @@ import { processCompletedOrders } from "./ordersResolver";
  * repeatedly from a game loop (see apps/web/src/hooks/useGameLoop.ts) instead
  * of from a manual "end turn" action: the economy ticks, the clock advances,
  * any build/move orders whose time has come are applied (including combat),
- * the gold config is enforced, and win conditions are checked. Once the game
- * has ended, further calls are no-ops.
+ * morale drifts (with uprisings and garrison healing), the gold config is
+ * enforced, and win conditions are checked. Once the game has ended, further
+ * calls are no-ops.
  */
 export function advanceTime(state: GameState, elapsedMs: number): GameState {
   if (state.status === "ended") return state;
@@ -19,7 +21,8 @@ export function advanceTime(state: GameState, elapsedMs: number): GameState {
   const afterEconomy = resolveEconomy(state, elapsedMs);
   const withNewClock = { ...afterEconomy, clockMs: afterEconomy.clockMs + elapsedMs };
   const afterOrders = processCompletedOrders(withNewClock);
-  const afterGold = applyGoldConfig(afterOrders);
+  const afterMorale = resolveMorale(afterOrders, elapsedMs);
+  const afterGold = applyGoldConfig(afterMorale);
 
   const winCheck = checkWinConditions(afterGold);
   if (winCheck.status === "ended") {

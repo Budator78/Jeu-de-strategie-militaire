@@ -6,7 +6,12 @@ import type { Province } from "./Province";
 import type { ResourceAmounts } from "./ResourceTypes";
 import type { Unit } from "./Unit";
 import { UNIT_TYPES, type UnitTypeId } from "./UnitTypes";
-import { DEFAULT_PROVINCE_MONEY_YIELD, DEFAULT_PROVINCE_VP, DEFAULT_VICTORY_POINT_TARGET } from "../rules/balance";
+import {
+  DEFAULT_PROVINCE_MONEY_YIELD,
+  DEFAULT_PROVINCE_VP,
+  DEFAULT_VICTORY_POINT_TARGET,
+  STARTING_MORALE,
+} from "../rules/balance";
 
 export interface ProvinceInput {
   id: string;
@@ -17,6 +22,7 @@ export interface ProvinceInput {
   resources?: ResourceAmounts;
   victoryPoints?: number;
   buildings?: BuildingId[];
+  morale?: number;
 }
 
 export interface CountryInput {
@@ -55,6 +61,8 @@ export function createGameState(input: CreateGameStateInput): GameState {
       resources: p.resources ?? { money: DEFAULT_PROVINCE_MONEY_YIELD },
       victoryPoints: p.victoryPoints ?? DEFAULT_PROVINCE_VP,
       buildings: p.buildings ?? [],
+      morale: p.morale ?? STARTING_MORALE,
+      homelandOf: p.ownerId,
     };
   }
 

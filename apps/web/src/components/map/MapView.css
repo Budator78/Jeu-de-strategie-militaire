@@ -399,9 +399,31 @@
   background: #9fc3dd;
 }
 
+.city-morale-fill.low {
+  background: #d1706b;
+}
+
 .city-morale-value {
   font-size: 0.75rem;
   font-weight: 700;
+}
+
+.city-morale-boost {
+  background: linear-gradient(#c99a2e, #a87c1d);
+  border: 1px solid #7e5c14;
+  border-radius: 3px;
+  padding: 2px 4px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.city-morale-boost:hover:not(:disabled) {
+  background: #d8a940;
+}
+
+.city-morale-boost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .city-block-info {

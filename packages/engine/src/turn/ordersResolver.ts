@@ -1,6 +1,7 @@
 import { produce } from "immer";
 import { MAX_EVENTS, type GameEvent } from "../state/GameEvents";
 import type { GameState } from "../state/GameState";
+import { CAPTURED_MORALE } from "../rules/balance";
 import { RESEARCH_TYPES } from "../state/ResearchTypes";
 import type { Unit } from "../state/Unit";
 import { UNIT_TYPES } from "../state/UnitTypes";
@@ -71,7 +72,7 @@ function applyResearchOrder(draft: GameState, order: Extract<Order, { kind: "res
   }
 }
 
-/** Buildings are destroyed on capture, per the source game (see wiki: Arms Industry). */
+/** Buildings are destroyed and morale collapses on capture, per the source game. */
 function captureProvince(draft: GameState, provinceId: string, newOwnerId: string): void {
   const province = draft.provinces[provinceId];
   if (!province) return;
@@ -85,6 +86,7 @@ function captureProvince(draft: GameState, provinceId: string, newOwnerId: strin
   });
   province.ownerId = newOwnerId;
   province.buildings = [];
+  province.morale = Math.min(province.morale, CAPTURED_MORALE);
 }
 
 /** Attacking (or capturing) another country's territory puts both sides at war — see ai/basicAI.ts. */

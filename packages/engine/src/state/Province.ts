@@ -18,4 +18,16 @@ export interface Province {
   victoryPoints: number;
   /** Constructed buildings (city-only per the wiki) — cleared when the province is captured. */
   buildings: BuildingId[];
+  /**
+   * 0-100. Scales the province's yield (see turn/economyResolver.ts) and,
+   * below UPRISING_MORALE_THRESHOLD on occupied land, risks an uprising
+   * (see turn/moraleResolver.ts). Drops on capture, drifts toward a target.
+   */
+  morale: number;
+  /**
+   * The country this province belonged to at game start. Owner === homelandOf
+   * means homeland (full production, can mobilize); anything else is occupied
+   * territory (reduced production, no mobilization, uprising risk).
+   */
+  homelandOf: string | null;
 }

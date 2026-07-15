@@ -18,6 +18,7 @@ export * from "./turn/orders";
 export * from "./turn/combatResolver";
 export * from "./turn/ordersResolver";
 export * from "./turn/market";
+export * from "./turn/moraleResolver";
 export * from "./turn/advanceTime";
 export * from "./rules/balance";
 export * from "./rules/winConditions";

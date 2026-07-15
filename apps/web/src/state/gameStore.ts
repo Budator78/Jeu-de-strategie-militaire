@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   advanceTime,
   basicAI,
+  boostMoraleWithGold,
   createGameState,
   executeMarketTrade,
   issueBuildOrder,
@@ -21,8 +22,8 @@ export const HUMAN_COUNTRY_ID = 'DEU'
 /** 1 real second = this many simulated seconds. The source game runs at 1x (real time). */
 export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
 
-// v2: GameState grew market/events/articles fields — older saves are incompatible.
-const SAVE_KEY = 'con-like-save-v2'
+// v3: Province grew morale/homelandOf fields — older saves are incompatible.
+const SAVE_KEY = 'con-like-save-v3'
 const AUTOSAVE_EVERY_N_TICKS = 20
 
 interface SaveFile {
@@ -46,6 +47,7 @@ interface GameStore {
   queueResearch: (researchId: ResearchId) => void
   trade: (offerId: string) => void
   publishArticle: (title: string, body: string) => void
+  boostMorale: (provinceId: string) => void
   saveGame: () => void
   loadGame: () => void
   newGame: () => void
@@ -151,6 +153,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       nextOrderId: s.nextOrderId + 1,
       state: writeArticle(s.state, articleId, HUMAN_COUNTRY_ID, title, body),
     }))
+  },
+  boostMorale: (provinceId) => {
+    set((s) => ({ state: boostMoraleWithGold(s.state, HUMAN_COUNTRY_ID, provinceId) }))
   },
   saveGame: () => {
     const s = get()

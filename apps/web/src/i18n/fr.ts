@@ -86,5 +86,12 @@ export function eventToArticle(event: GameEvent, countryName: (id: string | null
         involved: [event.countryId],
       }
     }
+    case 'uprising':
+      return {
+        headline: `Soulèvement à ${event.provinceName} !`,
+        body: `${formatEventTime(event.atMs)} ${event.provinceName} : excédée par l'occupation, la population s'est soulevée contre ${countryName(event.occupierId)} — le territoire retourne à ${countryName(event.homelandId)}.`,
+        category: 'politique',
+        involved: [event.occupierId, event.homelandId],
+      }
   }
 }

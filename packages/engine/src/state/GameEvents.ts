@@ -26,6 +26,14 @@ export type GameEvent =
       direction: "playerBuys" | "playerSells";
       totalPrice: number;
       currency: "money" | "gold";
+    }
+  | {
+      kind: "uprising";
+      atMs: number;
+      provinceId: string;
+      provinceName: string;
+      occupierId: string;
+      homelandId: string;
     };
 
 export const MAX_EVENTS = 300;

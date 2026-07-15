@@ -49,10 +49,11 @@ function canAffordCost(
 }
 
 /**
- * Queues a unit build in a city, paying its cost upfront. Only cities owned
- * by ownerId can build (see state/Province.ts), and only if affordable —
- * otherwise the state is returned unchanged. `orderId` is caller-supplied so
- * the engine stays free of non-deterministic id generation.
+ * Queues a unit build in a city, paying its cost upfront. Only HOMELAND
+ * cities owned by ownerId can mobilize (occupied cities can't, per the wiki),
+ * and only if affordable — otherwise the state is returned unchanged.
+ * `orderId` is caller-supplied so the engine stays free of non-deterministic
+ * id generation.
  */
 export function issueBuildOrder(
   state: GameState,
@@ -65,6 +66,7 @@ export function issueBuildOrder(
   const country = state.countries[ownerId];
   if (!province || !country) return state;
   if (province.ownerId !== ownerId || !province.isCity) return state;
+  if (province.homelandOf !== ownerId) return state; // occupied city — no mobilization
 
   const def = UNIT_TYPES[unitType];
   if (!canAffordCost(country.resources, def.cost)) return state;

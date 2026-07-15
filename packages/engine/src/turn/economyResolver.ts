@@ -4,6 +4,7 @@ import type { GameState } from "../state/GameState";
 import type { Province } from "../state/Province";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES } from "../state/UnitTypes";
+import { OCCUPIED_PRODUCTION_FACTOR } from "../rules/balance";
 
 const MS_PER_MINUTE = 60_000;
 
@@ -25,6 +26,16 @@ function buildingBonusMultiplier(province: Province, resource: ResourceType): nu
   return multiplier;
 }
 
+/**
+ * Morale/occupation scaling applied on top of a province's base yield:
+ * morale% × (1 on homeland, OCCUPIED_PRODUCTION_FACTOR elsewhere), per the
+ * wiki's production table. Exported so the UI can show effective rates.
+ */
+export function provinceYieldMultiplier(province: Province): number {
+  const statusFactor = province.ownerId === province.homelandOf ? 1 : OCCUPIED_PRODUCTION_FACTOR;
+  return (province.morale / 100) * statusFactor;
+}
+
 function computeIncomePerMinute(
   state: GameState,
   countryId: string,
@@ -32,9 +43,10 @@ function computeIncomePerMinute(
   const income: Partial<Record<ResourceType, number>> = {};
   for (const province of Object.values(state.provinces)) {
     if (province.ownerId !== countryId) continue;
+    const yieldMultiplier = provinceYieldMultiplier(province);
     for (const [resource, amount] of Object.entries(province.resources)) {
       const key = resource as ResourceType;
-      const withBonus = (amount ?? 0) * buildingBonusMultiplier(province, key);
+      const withBonus = (amount ?? 0) * buildingBonusMultiplier(province, key) * yieldMultiplier;
       income[key] = (income[key] ?? 0) + withBonus;
     }
   }
