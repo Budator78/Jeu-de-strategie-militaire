@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { geoNaturalEarth1, geoPath } from 'd3-geo'
 import { select } from 'd3-selection'
-import { zoom, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
+import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
 import type { Unit } from '@con/engine'
 import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
+import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
 import { BuildUnitModal } from '../hud/BuildUnitModal'
 import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
+import { HudIcon } from '../hud/icons'
 import './MapView.css'
 
 const WIDTH = 900
@@ -27,6 +29,28 @@ const UNIT_GLYPH: Record<string, string> = { infantry: 'I', tank: 'T', fighter: 
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
 
+// Faint triangulated "logistics network" connecting neighboring province
+// centroids, like the mesh overlay in the source game's map.
+const meshLinesPath = (() => {
+  const centroids = new Map<string, [number, number]>()
+  for (const f of provinceFeatures) centroids.set(f.id, pathGenerator.centroid(f as never))
+  const seen = new Set<string>()
+  let d = ''
+  for (const [id, neighbors] of Object.entries(adjacency)) {
+    const c1 = centroids.get(id)
+    if (!c1) continue
+    for (const neighborId of neighbors) {
+      const key = id < neighborId ? `${id}|${neighborId}` : `${neighborId}|${id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const c2 = centroids.get(neighborId)
+      if (!c2) continue
+      d += `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
+    }
+  }
+  return d
+})()
+
 interface TopoGeometry {
   id?: string | number
 }
@@ -38,11 +62,10 @@ interface UnitStack {
   units: Unit[]
   x: number
   y: number
-  /** Horizontal screen-px offset when several owners' stacks share a province. */
   offsetX: number
 }
 
-export function MapView() {
+export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const gRef = useRef<SVGGElement | null>(null)
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
@@ -77,6 +100,19 @@ export function MapView() {
   function zoomBy(factor: number) {
     if (!svgRef.current || !zoomBehaviorRef.current) return
     zoomBehaviorRef.current.scaleBy(select(svgRef.current), factor)
+  }
+
+  function resetZoom() {
+    if (!svgRef.current || !zoomBehaviorRef.current) return
+    zoomBehaviorRef.current.transform(select(svgRef.current), zoomIdentity)
+  }
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen()
+    } else {
+      void document.documentElement.requestFullscreen()
+    }
   }
 
   const selected = useMemo(
@@ -134,8 +170,22 @@ export function MapView() {
     [selectedStack, provinces],
   )
 
-  // Front line: the shared border between two provinces whose owners are at
-  // war with each other (see Country.atWarWith).
+  // Bright white outline hugging the human country's full border (land + coast),
+  // like the selected-nation glow in the source game.
+  const humanOutlinePath = useMemo(() => {
+    const outlineMesh = mesh(
+      topology as never,
+      topology.objects[OBJECT_NAME] as never,
+      (a: TopoGeometry, b: TopoGeometry | undefined) => {
+        const aHuman = provinces[String(a.id)]?.ownerId === HUMAN_COUNTRY_ID
+        const bHuman = b ? provinces[String(b.id)]?.ownerId === HUMAN_COUNTRY_ID : false
+        return aHuman !== bHuman
+      },
+    )
+    return pathGenerator(outlineMesh as never) ?? undefined
+  }, [provinces])
+
+  // Front line: the shared border between two provinces whose owners are at war.
   const frontLinePath = useMemo(() => {
     const frontMesh = mesh(
       topology as never,
@@ -161,7 +211,6 @@ export function MapView() {
 
   function handleProvinceClick(provinceId: string) {
     if (selectedStack && validTargets?.has(provinceId)) {
-      // Move the whole stack (each idle unit gets its own order), like the source game's group moves.
       for (const unit of selectedStack.units) {
         if (!movingUnitIds.has(unit.id)) queueMove(unit.id, provinceId)
       }
@@ -191,130 +240,154 @@ export function MapView() {
 
   return (
     <div className="map-view">
-      <div className="map-frame">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-          className="map-svg"
-          role="img"
-          aria-label="Map of provinces"
-        >
-          <g ref={gRef}>
-            {provinceFeatures.map((f) => {
-              const provinceState = provinces[f.id]
-              const classes = ['province', ownerClass(provinceState?.ownerId ?? null)]
-              if (provinceState?.isCity) classes.push('city')
-              if (f.id === selectedId) classes.push('selected')
-              if (validTargets?.has(f.id)) classes.push('valid-target')
-              return (
-                <path
-                  key={f.id}
-                  d={pathGenerator(f as never) ?? undefined}
-                  className={classes.join(' ')}
-                  onClick={() => handleProvinceClick(f.id)}
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        preserveAspectRatio="xMidYMid meet"
+        className="map-svg"
+        role="img"
+        aria-label="Carte du monde"
+      >
+        <g ref={gRef}>
+          {provinceFeatures.map((f) => {
+            const provinceState = provinces[f.id]
+            const classes = ['province', ownerClass(provinceState?.ownerId ?? null)]
+            if (provinceState?.isCity) classes.push('city')
+            if (f.id === selectedId) classes.push('selected')
+            if (validTargets?.has(f.id)) classes.push('valid-target')
+            return (
+              <path
+                key={f.id}
+                d={pathGenerator(f as never) ?? undefined}
+                className={classes.join(' ')}
+                onClick={() => handleProvinceClick(f.id)}
+              >
+                <title>{f.properties.name_en}</title>
+              </path>
+            )
+          })}
+          <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
+          {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
+          {frontLinePath && <path d={frontLinePath} className="front-line" />}
+          {cityLabels.map(({ feature, centroid }) => (
+            <g key={feature.id} className="city-label" transform={`translate(${centroid[0]}, ${centroid[1]})`}>
+              <circle r={2.2 / zoomScale} />
+              {zoomScale >= CITY_LABEL_MIN_ZOOM && (
+                <text
+                  y={-4 / zoomScale}
+                  textAnchor="middle"
+                  fontSize={CITY_LABEL_FONT_SCREEN_PX / zoomScale}
+                  strokeWidth={2.2 / zoomScale}
                 >
-                  <title>{f.properties.name_en}</title>
-                </path>
-              )
-            })}
-            {frontLinePath && <path d={frontLinePath} className="front-line" />}
-            {cityLabels.map(({ feature, centroid }) => (
-              <g key={feature.id} className="city-label" transform={`translate(${centroid[0]}, ${centroid[1]})`}>
-                <circle r={2.2 / zoomScale} />
-                {zoomScale >= CITY_LABEL_MIN_ZOOM && (
-                  <text
-                    y={-4 / zoomScale}
-                    textAnchor="middle"
-                    fontSize={CITY_LABEL_FONT_SCREEN_PX / zoomScale}
-                    strokeWidth={2.2 / zoomScale}
-                  >
-                    {feature.properties.name_en}
-                    {CITY_SIZE[feature.id] !== undefined ? `(${CITY_SIZE[feature.id]})` : ''}
-                  </text>
-                )}
+                  {feature.properties.name_en}
+                  {CITY_SIZE[feature.id] !== undefined ? `(${CITY_SIZE[feature.id]})` : ''}
+                </text>
+              )}
+            </g>
+          ))}
+          {unitStacks.map((stack) => {
+            const classes = ['unit-stack', ownerClass(stack.ownerId)]
+            if (stack.key === selectedStackKey) classes.push('selected')
+            const glyph = UNIT_GLYPH[stack.units[0].type] ?? '?'
+            return (
+              <g
+                key={stack.key}
+                className={classes.join(' ')}
+                transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, 12)`}
+                onClick={(event) => handleStackClick(stack, event)}
+              >
+                <rect x={-10} y={-7} width={20} height={14} rx={2} className="stack-body" />
+                <rect x={-10} y={-7} width={4} height={14} rx={1} className="stack-stripe" />
+                <text x={-2.5} y={3.5} textAnchor="middle" className="stack-glyph">
+                  {glyph}
+                </text>
+                <circle cx={10} cy={-7} r={5.5} className="stack-count-bg" />
+                <text x={10} y={-4.5} textAnchor="middle" className="stack-count">
+                  {stack.units.length}
+                </text>
               </g>
-            ))}
-            {unitStacks.map((stack) => {
-              const classes = ['unit-stack', ownerClass(stack.ownerId)]
-              if (stack.key === selectedStackKey) classes.push('selected')
-              const glyph = UNIT_GLYPH[stack.units[0].type] ?? '?'
-              return (
-                <g
-                  key={stack.key}
-                  className={classes.join(' ')}
-                  transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, 12)`}
-                  onClick={(event) => handleStackClick(stack, event)}
-                >
-                  <rect x={-10} y={-7} width={20} height={14} rx={2} className="stack-body" />
-                  <rect x={-10} y={-7} width={4} height={14} rx={1} className="stack-stripe" />
-                  <text x={-2.5} y={3.5} textAnchor="middle" className="stack-glyph">
-                    {glyph}
-                  </text>
-                  <circle cx={10} cy={-7} r={5.5} className="stack-count-bg" />
-                  <text x={10} y={-4.5} textAnchor="middle" className="stack-count">
-                    {stack.units.length}
-                  </text>
-                </g>
-              )
-            })}
-          </g>
-        </svg>
-        <div className="zoom-controls">
-          <button type="button" onClick={() => zoomBy(1.6)} aria-label="Zoom in">
-            +
-          </button>
-          <button type="button" onClick={() => zoomBy(1 / 1.6)} aria-label="Zoom out">
-            −
-          </button>
-        </div>
+            )
+          })}
+        </g>
+      </svg>
+
+      <div className="map-buttons">
+        <button type="button" onClick={toggleFullscreen} title="Plein écran">
+          <HudIcon name="fullscreen" />
+        </button>
+        <button type="button" onClick={() => zoomBy(1.6)} title="Zoomer">
+          +
+        </button>
+        <button type="button" onClick={() => zoomBy(1 / 1.6)} title="Dézoomer">
+          −
+        </button>
+        <button type="button" onClick={resetZoom} title="Vue globale">
+          <HudIcon name="magnifier" />
+        </button>
+        <button type="button" title="Couches (à venir)">
+          <HudIcon name="layers" />
+        </button>
+        <button type="button" onClick={onOpenSettings} title="Options">
+          <HudIcon name="gear" />
+        </button>
       </div>
-      <aside className="map-sidebar">
-        {selected && selectedState ? (
-          <>
-            <h2>{selected.properties.name_en}</h2>
-            <p className="local-name">{selected.properties.name}</p>
-            <p>{selectedState.isCity ? 'City' : 'Province'}</p>
-            <p>Owner: {selectedOwner ? selectedOwner.name : 'Unclaimed'}</p>
-            <ul className="yields">
-              {Object.entries(selectedState.resources).map(([resource, amount]) => (
-                <li key={resource}>
-                  {resource}: {amount}/min
+
+      {selected && selectedState && (
+        <div className="province-panel">
+          <div className="province-panel-header">
+            <h2>
+              {selected.properties.name_en}
+              {CITY_SIZE[selected.id] !== undefined ? `(${CITY_SIZE[selected.id]})` : ''}
+            </h2>
+            <button type="button" className="modal-close" onClick={() => setSelectedId(null)} aria-label="Fermer">
+              ×
+            </button>
+          </div>
+          <p className="province-kind">
+            {selectedState.isCity ? 'Ville' : 'Province'} · {selectedOwner ? selectedOwner.name : 'Territoire libre'}
+          </p>
+          <ul className="yields">
+            {Object.entries(selectedState.resources).map(([resource, amount]) => (
+              <li key={resource}>
+                {RESOURCE_LABELS_FR[resource as keyof typeof RESOURCE_LABELS_FR] ?? resource} : {amount}/min
+              </li>
+            ))}
+          </ul>
+          {selectedState.isCity && (
+            <p className="province-buildings">
+              Bâtiments :{' '}
+              {selectedState.buildings.length > 0
+                ? selectedState.buildings.map((b) => BUILDING_LABELS_FR[b]).join(', ')
+                : 'aucun'}
+            </p>
+          )}
+          {unitsInSelectedProvince.length > 0 && (
+            <ul className="unit-list">
+              {unitsInSelectedProvince.map((u) => (
+                <li key={u.id}>
+                  {UNIT_LABELS_FR[u.type]} ({u.ownerId}) — {Math.round(u.health)} pv
                 </li>
               ))}
             </ul>
-            <p>Neighbors: {(adjacency[selected.id] ?? []).length}</p>
-            {selectedState.isCity && (
-              <p>Buildings: {selectedState.buildings.length > 0 ? selectedState.buildings.join(', ') : 'none'}</p>
-            )}
-            {unitsInSelectedProvince.length > 0 && (
-              <ul className="unit-list">
-                {unitsInSelectedProvince.map((u) => (
-                  <li key={u.id}>
-                    {u.type} ({u.ownerId}) — {Math.round(u.health)} hp
-                  </li>
-                ))}
-              </ul>
-            )}
-            {selectedState.isCity && selectedState.ownerId === HUMAN_COUNTRY_ID && (
-              <div className="production-buttons">
-                <button type="button" onClick={() => setBuildUnitOpen(true)}>
-                  Build unit
-                </button>
-                <button type="button" onClick={() => setConstructOpen(true)}>
-                  Construct building
-                </button>
-              </div>
-            )}
-            {selectedStack && (
-              <p className="move-hint">
-                Stack of {selectedStack.units.length} selected — click a highlighted province to move it.
-              </p>
-            )}
-          </>
-        ) : (
-          <p>Click a province to select it.</p>
-        )}
-      </aside>
+          )}
+          {selectedState.isCity && selectedState.ownerId === HUMAN_COUNTRY_ID && (
+            <div className="production-buttons">
+              <button type="button" onClick={() => setBuildUnitOpen(true)}>
+                Recruter une unité
+              </button>
+              <button type="button" onClick={() => setConstructOpen(true)}>
+                Construire un bâtiment
+              </button>
+            </div>
+          )}
+          {selectedStack && (
+            <p className="move-hint">
+              Pile de {selectedStack.units.length} sélectionnée — cliquez une province surlignée pour la déplacer.
+            </p>
+          )}
+        </div>
+      )}
+
       {buildUnitOpen && selected && (
         <BuildUnitModal provinceId={selected.id} onClose={() => setBuildUnitOpen(false)} />
       )}

@@ -64,6 +64,138 @@ export function ResearchIcon() {
   )
 }
 
+/** Small monochrome HUD glyphs (original art). Sized via CSS on the parent. */
+export function HudIcon({ name }: { name: string }) {
+  switch (name) {
+    case 'newspaper':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <rect x="2" y="4" width="13" height="13" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <rect x="15" y="7" width="3" height="10" fill="currentColor" />
+          <rect x="4.5" y="6.5" width="8" height="3" fill="currentColor" />
+          <line x1="4.5" y1="12" x2="12.5" y2="12" stroke="currentColor" strokeWidth="1.3" />
+          <line x1="4.5" y1="14.5" x2="12.5" y2="14.5" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      )
+    case 'research':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M8 2.5 h4 v5 l4 8 a1.5 1.5 0 0 1 -1.4 2 H5.4 a1.5 1.5 0 0 1 -1.4 -2 l4 -8 Z" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M6 13 h8 l1.5 3 h-11 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'dove':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M3 12 Q7 10 9 7 Q10 9 13 9 L17 8 L14 11 Q11 15 5 14 L2 16 L4 13 Z" fill="currentColor" />
+          <path d="M9 7 Q10 3 14 3 Q11 5 11 8 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'handshake':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M2 8 L6 6 L10 8 L14 6 L18 8 L14 13 L10 11 L6 13 Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <line x1="10" y1="8" x2="10" y2="11" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      )
+    case 'alert':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <rect x="8.4" y="3" width="3.2" height="9" rx="1.4" fill="currentColor" />
+          <circle cx="10" cy="16" r="1.8" fill="currentColor" />
+        </svg>
+      )
+    case 'info':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <circle cx="10" cy="5" r="1.7" fill="currentColor" />
+          <rect x="8.5" y="8" width="3" height="9" rx="1.2" fill="currentColor" />
+        </svg>
+      )
+    case 'home':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M3 10 L10 3.5 L17 10" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M5.5 9.5 V16.5 H14.5 V9.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <rect x="8.5" y="12" width="3" height="4.5" fill="currentColor" />
+        </svg>
+      )
+    case 'trophy':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M6 3 h8 v5 a4 4 0 0 1 -8 0 Z" fill="currentColor" />
+          <path d="M6 4.5 H3.5 a3 3 0 0 0 3 3.5 M14 4.5 h2.5 a3 3 0 0 1 -3 3.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+          <rect x="8.7" y="11.5" width="2.6" height="3" fill="currentColor" />
+          <rect x="6.5" y="14.5" width="7" height="2.2" rx="0.6" fill="currentColor" />
+        </svg>
+      )
+    case 'laurel':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M5 4 Q3 9 6 14 Q8 16.5 10 17 Q12 16.5 14 14 Q17 9 15 4 Q14.5 8 13 11 Q11.8 13.3 10 14 Q8.2 13.3 7 11 Q5.5 8 5 4 Z" fill="currentColor" />
+          <circle cx="10" cy="7" r="2.4" fill="currentColor" />
+        </svg>
+      )
+    case 'clockDay':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M10 2 L12 6 H8 Z" fill="currentColor" />
+          <circle cx="10" cy="12" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M10 9 v3.2 l2.3 1.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      )
+    case 'fullscreen':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <path d="M3 8 V3 h5 M12 3 h5 v5 M17 12 v5 h-5 M8 17 H3 v-5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      )
+    case 'layers':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <ellipse cx="10" cy="5.5" rx="6.5" ry="2.6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M3.5 5.5 v4.5 c0 1.4 2.9 2.6 6.5 2.6 s6.5 -1.2 6.5 -2.6 V5.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M3.5 10 v4.5 c0 1.4 2.9 2.6 6.5 2.6 s6.5 -1.2 6.5 -2.6 V10" fill="none" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      )
+    case 'magnifier':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <line x1="12.3" y1="12.3" x2="17" y2="17" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        </svg>
+      )
+    case 'gear':
+      return (
+        <svg viewBox="0 0 20 20" width="100%" height="100%" aria-hidden="true">
+          <circle cx="10" cy="10" r="3" fill="none" stroke="currentColor" strokeWidth="1.7" />
+          <g stroke="currentColor" strokeWidth="1.8">
+            <line x1="10" y1="2.5" x2="10" y2="5.5" /><line x1="10" y1="14.5" x2="10" y2="17.5" />
+            <line x1="2.5" y1="10" x2="5.5" y2="10" /><line x1="14.5" y1="10" x2="17.5" y2="10" />
+            <line x1="4.7" y1="4.7" x2="6.8" y2="6.8" /><line x1="13.2" y1="13.2" x2="15.3" y2="15.3" />
+            <line x1="15.3" y1="4.7" x2="13.2" y2="6.8" /><line x1="6.8" y1="13.2" x2="4.7" y2="15.3" />
+          </g>
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
+/** Original officer portrait silhouette for the top-right diamond badge. */
+export function OfficerPortrait() {
+  return (
+    <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">
+      <rect width="48" height="48" fill="#3a444d" />
+      <path d="M10 15 Q10 8 18 7 L34 6 Q38 9 36 14 L35 17 Q30 14 24 15 Q14 16 13 22 Z" fill="#2a323a" />
+      <circle cx="24" cy="22" r="8.5" fill="#b99a72" />
+      <path d="M10 48 Q10 34 24 34 Q38 34 38 48 Z" fill="#4a5747" />
+      <path d="M18 36 L24 40 L30 36 L30 48 L18 48 Z" fill="#3d4a3b" />
+      <path d="M13 22 Q13 13 22 12 L35 11 Q37 14 35 17 L33 19 Q28 15 22 16 Q15 17 14 23 Z" fill="#37414a" />
+    </svg>
+  )
+}
+
 /** Small colored resource glyphs for the top HUD bar (original art, styled after the source game's silhouettes). */
 export function ResourceIcon({ resource }: { resource: string }) {
   switch (resource) {

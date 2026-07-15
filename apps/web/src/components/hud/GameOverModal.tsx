@@ -14,10 +14,16 @@ export function GameOverModal() {
   return (
     <div className="game-over-backdrop">
       <div className="game-over-modal">
-        <h2>{winner ? `${winner.name} wins!` : 'Game over'}</h2>
-        <p>{winner ? (youWon ? 'Victory! You conquered the map.' : 'Defeat — try again.') : 'No one is left standing.'}</p>
+        <h2>{winner ? `${winner.name} l'emporte !` : 'Fin de partie'}</h2>
+        <p>
+          {winner
+            ? youWon
+              ? 'Victoire ! Vous avez dominé la carte.'
+              : 'Défaite — retentez votre chance.'
+            : 'Plus personne ne tient debout.'}
+        </p>
         <button type="button" onClick={newGame}>
-          New Game
+          Nouvelle partie
         </button>
       </div>
     </div>

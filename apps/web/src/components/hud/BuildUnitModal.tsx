@@ -1,5 +1,6 @@
 import { UNIT_TYPES, type UnitTypeId } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
+import { formatCostFr, UNIT_LABELS_FR } from '../../i18n/fr'
 import { formatDuration } from '../../utils/formatDuration'
 import { Modal } from './Modal'
 import { UnitIcon } from './icons'
@@ -16,7 +17,7 @@ export function BuildUnitModal({ provinceId, onClose }: { provinceId: string; on
   if (!country) return null
 
   return (
-    <Modal title="Build unit" onClose={onClose}>
+    <Modal title="Recruter une unité" onClose={onClose}>
       <div className="production-grid">
         {(Object.keys(UNIT_TYPES) as UnitTypeId[]).map((typeId) => {
           const def = UNIT_TYPES[typeId]
@@ -27,16 +28,12 @@ export function BuildUnitModal({ provinceId, onClose }: { provinceId: string; on
                 <UnitIcon type={typeId} />
               </div>
               <div className="production-info">
-                <h4>{def.name}</h4>
-                <p className="production-time">Time: {formatDuration(def.buildTimeMs)}</p>
-                <p className="production-cost">
-                  {Object.entries(def.cost)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
-                    .join(', ')}
-                </p>
+                <h4>{UNIT_LABELS_FR[typeId]}</h4>
+                <p className="production-time">Durée : {formatDuration(def.buildTimeMs)}</p>
+                <p className="production-cost">{formatCostFr(def.cost)}</p>
               </div>
               <button type="button" disabled={!affordable} onClick={() => queueBuild(provinceId, typeId)}>
-                Build
+                Recruter
               </button>
             </div>
           )

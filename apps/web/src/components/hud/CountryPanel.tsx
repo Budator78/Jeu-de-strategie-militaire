@@ -1,13 +1,16 @@
 import { computeVictoryPoints } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
+import { HudIcon } from './icons'
 import './hud.css'
+
+const PLAYER_NAME = 'BUDATOR78'
 
 function GermanyFlag() {
   return (
-    <svg viewBox="0 0 30 18" width={44} height={26} aria-hidden="true">
-      <rect width="30" height="6" fill="#1a1a1a" />
-      <rect y="6" width="30" height="6" fill="#c0392b" />
-      <rect y="12" width="30" height="6" fill="#e5b93c" />
+    <svg viewBox="0 0 36 24" width={52} height={34} aria-hidden="true">
+      <rect width="36" height="8" fill="#1a1a1a" />
+      <rect y="8" width="36" height="8" fill="#c0392b" />
+      <rect y="16" width="36" height="8" fill="#e5b93c" />
     </svg>
   )
 }
@@ -21,11 +24,15 @@ function formatDayTime(clockMs: number): { day: number; time: string } {
   return { day, time: `${hh}:${mm}` }
 }
 
-export function CountryPanel() {
+export function CountryPanel({ onOpenResearch }: { onOpenResearch: () => void }) {
   const country = useGameStore((s) => s.state.countries[HUMAN_COUNTRY_ID])
   const clockMs = useGameStore((s) => s.state.clockMs)
   const vp = useGameStore((s) => computeVictoryPoints(s.state, HUMAN_COUNTRY_ID))
   const vpTarget = useGameStore((s) => s.state.config.victoryPointTarget)
+  const pendingResearch = useGameStore(
+    (s) => s.state.pendingOrders.filter((o) => o.kind === 'research' && o.ownerId === HUMAN_COUNTRY_ID).length,
+  )
+  const warCount = country?.atWarWith.length ?? 0
   if (!country) return null
 
   const { day, time } = formatDayTime(clockMs)
@@ -34,21 +41,67 @@ export function CountryPanel() {
     <div className="country-panel">
       <div className="country-panel-header">
         <GermanyFlag />
-        <div className="country-panel-name">{country.name.toUpperCase()}</div>
+        <div className="country-panel-titles">
+          <div className="country-panel-player">{PLAYER_NAME}</div>
+          <div className="country-panel-nation">{country.name.toUpperCase()}</div>
+        </div>
+        <button type="button" className="cp-square-btn" title="Informations">
+          <HudIcon name="info" />
+        </button>
+        <button type="button" className="cp-square-btn" title="Accueil">
+          <HudIcon name="home" />
+        </button>
       </div>
       <div className="country-panel-stats">
-        <div className="country-panel-row">
-          <span className="label">DAY</span>
-          <span className="value">{day}</span>
-          <span className="label">TIME</span>
-          <span className="value">{time}</span>
+        <div className="cp-daytime">
+          <span className="cp-icon">
+            <HudIcon name="clockDay" />
+          </span>
+          <div className="cp-daytime-rows">
+            <div>
+              <span className="cp-label">JOUR</span>
+              <span className="cp-chip">{day}</span>
+            </div>
+            <div>
+              <span className="cp-label">TEMPS</span>
+              <span className="cp-chip">{time}</span>
+            </div>
+          </div>
         </div>
-        <div className="country-panel-row">
-          <span className="label">VICTORY PROGRESS</span>
-          <span className="value">
-            {vp} / {vpTarget} VP
+        <div className="cp-victory">
+          <span className="cp-icon">
+            <HudIcon name="trophy" />
+          </span>
+          <div className="cp-victory-text">
+            <div className="cp-label">PROGRESSION DE LA VICTOIRE</div>
+            <div className="cp-vp">
+              {vp} / {vpTarget} VP
+            </div>
+          </div>
+          <span className="cp-laurel">
+            <HudIcon name="laurel" />
           </span>
         </div>
+      </div>
+      <div className="country-panel-actions">
+        <button type="button" className="cp-action-btn" title="Journal">
+          <HudIcon name="newspaper" />
+          <span className="cp-badge cp-badge-blue">1</span>
+        </button>
+        <button type="button" className="cp-action-btn cp-action-active" title="Recherche" onClick={onOpenResearch}>
+          <HudIcon name="research" />
+          {pendingResearch > 0 && <span className="cp-badge cp-badge-red">{pendingResearch}</span>}
+        </button>
+        <button type="button" className="cp-action-btn" title="Diplomatie">
+          <HudIcon name="dove" />
+        </button>
+        <button type="button" className="cp-action-btn" title="Accords">
+          <HudIcon name="handshake" />
+        </button>
+        <button type="button" className="cp-action-btn" title="Alertes">
+          <HudIcon name="alert" />
+          {warCount > 0 && <span className="cp-badge cp-badge-red">{warCount}</span>}
+        </button>
       </div>
     </div>
   )

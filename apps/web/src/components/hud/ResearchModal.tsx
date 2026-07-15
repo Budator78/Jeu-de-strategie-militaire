@@ -1,5 +1,6 @@
 import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
+import { formatCostFr, RESEARCH_LABELS_FR } from '../../i18n/fr'
 import { formatDuration } from '../../utils/formatDuration'
 import { Modal } from './Modal'
 import { ResearchIcon } from './icons'
@@ -19,8 +20,10 @@ export function ResearchModal({ onClose }: { onClose: () => void }) {
   if (!country) return null
 
   return (
-    <Modal title={`Research (${pendingCount}/${MAX_CONCURRENT_RESEARCH} in progress)`} onClose={onClose}>
-      <p className="research-note">Country-wide — applies to newly built units everywhere, not a specific city.</p>
+    <Modal title={`Recherche (${pendingCount}/${MAX_CONCURRENT_RESEARCH} en cours)`} onClose={onClose}>
+      <p className="research-note">
+        À l'échelle du pays — s'applique aux nouvelles unités partout, pas à une ville précise.
+      </p>
       <div className="production-grid">
         {(Object.keys(RESEARCH_TYPES) as ResearchId[]).map((researchId) => {
           const def = RESEARCH_TYPES[researchId]
@@ -32,22 +35,18 @@ export function ResearchModal({ onClose }: { onClose: () => void }) {
                 <ResearchIcon />
               </div>
               <div className="production-info">
-                <h4>{def.name}</h4>
+                <h4>{RESEARCH_LABELS_FR[researchId]}</h4>
                 <p className="production-time">
-                  Time: {formatDuration(def.researchTimeMs)} · +{Math.round(def.attackBonus * 100)}% atk/def
+                  Durée : {formatDuration(def.researchTimeMs)} · +{Math.round(def.attackBonus * 100)}% att/déf
                 </p>
-                <p className="production-cost">
-                  {Object.entries(def.cost)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
-                    .join(', ')}
-                </p>
+                <p className="production-cost">{formatCostFr(def.cost)}</p>
               </div>
               <button
                 type="button"
                 disabled={completed || !affordable || pendingCount >= MAX_CONCURRENT_RESEARCH}
                 onClick={() => queueResearch(researchId)}
               >
-                {completed ? 'Done' : 'Research'}
+                {completed ? 'Terminée' : 'Rechercher'}
               </button>
             </div>
           )

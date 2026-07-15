@@ -1,5 +1,6 @@
 import { BUILDING_TYPES, type BuildingId } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
+import { BUILDING_LABELS_FR, formatCostFr } from '../../i18n/fr'
 import { formatDuration } from '../../utils/formatDuration'
 import { Modal } from './Modal'
 import { BuildingIcon } from './icons'
@@ -17,7 +18,7 @@ export function ConstructBuildingModal({ provinceId, onClose }: { provinceId: st
   if (!country || !province) return null
 
   return (
-    <Modal title="Construct building" onClose={onClose}>
+    <Modal title="Construire un bâtiment" onClose={onClose}>
       <div className="production-grid">
         {(Object.keys(BUILDING_TYPES) as BuildingId[]).map((buildingId) => {
           const def = BUILDING_TYPES[buildingId]
@@ -29,20 +30,16 @@ export function ConstructBuildingModal({ provinceId, onClose }: { provinceId: st
                 <BuildingIcon id={buildingId} />
               </div>
               <div className="production-info">
-                <h4>{def.name}</h4>
-                <p className="production-time">Time: {formatDuration(def.buildTimeMs)}</p>
-                <p className="production-cost">
-                  {Object.entries(def.cost)
-                    .map(([resource, amount]) => `${amount} ${resource}`)
-                    .join(', ')}
-                </p>
+                <h4>{BUILDING_LABELS_FR[buildingId]}</h4>
+                <p className="production-time">Durée : {formatDuration(def.buildTimeMs)}</p>
+                <p className="production-cost">{formatCostFr(def.cost)}</p>
               </div>
               <button
                 type="button"
                 disabled={alreadyBuilt || !affordable}
                 onClick={() => queueConstruct(provinceId, buildingId)}
               >
-                {alreadyBuilt ? 'Built' : 'Construct'}
+                {alreadyBuilt ? 'Construit' : 'Construire'}
               </button>
             </div>
           )

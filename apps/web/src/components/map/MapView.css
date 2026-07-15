@@ -1,21 +1,18 @@
 .map-view {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
+  position: absolute;
+  inset: 0;
 }
 
-.map-frame {
-  position: relative;
-  flex: 1 1 auto;
-}
-
-/* Ocean: desaturated slate blue, like the source game's satellite look. */
+/* Ocean: desaturated slate blue with depth, filling the whole viewport. */
 .map-svg {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-  background: linear-gradient(160deg, #4c5f6e 0%, #43545f 45%, #3a4a54 100%);
-  border: 1px solid #232c33;
-  border-radius: 3px;
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 30% 25%, #55697a 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 75%, #33424d 0%, transparent 60%),
+    linear-gradient(160deg, #4c5f6e 0%, #43545f 45%, #3a4a54 100%);
   cursor: grab;
   display: block;
 }
@@ -28,7 +25,7 @@
 
 /* Own territory: vivid satellite green. Everyone else fades toward gray. */
 .province.owner-human {
-  fill: #79a054;
+  fill: #7fa657;
 }
 
 .province.owner-active-ai {
@@ -36,11 +33,11 @@
 }
 
 .province.owner-passive {
-  fill: #98a091;
+  fill: #99a191;
 }
 
 .province.owner-enemy {
-  fill: #a06355;
+  fill: #9c5f4c;
 }
 
 .province.owner-neutral {
@@ -55,7 +52,6 @@
   stroke-width: 0.45;
 }
 
-/* Selection: bright white outline, like the highlighted country in the source game. */
 .province.selected {
   stroke: #fff;
   stroke-width: 1.2;
@@ -65,6 +61,22 @@
 .province.valid-target {
   filter: brightness(1.3) saturate(1.35);
   cursor: crosshair;
+}
+
+/* Faint triangulated logistics mesh between neighboring provinces. */
+.mesh-lines {
+  fill: none;
+  stroke: rgba(235, 242, 246, 0.14);
+  pointer-events: none;
+}
+
+/* Bright white glow hugging the player country's full border, like the reference UI. */
+.human-outline {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.9));
+  pointer-events: none;
 }
 
 .front-line {
@@ -154,72 +166,112 @@
   stroke-width: 1.2;
 }
 
-/* Bottom-right zoom buttons, like the source game. */
-.zoom-controls {
+/* Bottom-right button column (fullscreen, zoom, reset, layers, settings). */
+.map-buttons {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 12px;
+  bottom: 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  z-index: 20;
 }
 
-.zoom-controls button {
-  width: 34px;
-  height: 34px;
-  font-size: 1.2rem;
+.map-buttons button {
+  width: 36px;
+  height: 36px;
+  padding: 7px;
+  font-size: 1.15rem;
   line-height: 1;
-  background: #2b3540ee;
+  background: linear-gradient(#3a4650f5, #2b3540f5);
   color: #dfe7ea;
-  border: 1px solid #1a2229;
+  border: 1px solid #171f26;
   border-radius: 4px;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
-.zoom-controls button:hover {
-  background: #38444fee;
+.map-buttons button:hover {
+  background: #45535f;
 }
 
-.map-sidebar {
-  min-width: 220px;
-  max-width: 260px;
-  padding: 0.9rem 1rem;
-  background: #2b3540f2;
+/* Floating province info panel (bottom-center). */
+.province-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 25;
+  width: 340px;
+  max-height: 46vh;
+  overflow-y: auto;
+  background: #2b3540f5;
+  border: 1px solid #171f26;
+  border-radius: 5px;
   color: #dfe7ea;
-  border: 1px solid #1a2229;
-  border-radius: 4px;
-  font-family: 'Segoe UI', sans-serif;
-  font-size: 0.85rem;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.8rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
-.map-sidebar h2 {
-  margin: 0 0 0.1rem;
-  font-size: 1.05rem;
+.province-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.map-sidebar .local-name {
+.province-panel-header h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.province-kind {
   color: #9aa7b0;
-  font-style: italic;
-  margin-top: 0;
+  margin: 0.1rem 0 0.4rem;
 }
 
-.map-sidebar .yields {
+.province-panel .yields {
   list-style: none;
   padding: 0;
   margin: 0.25rem 0;
+  columns: 2;
 }
 
-.map-sidebar .unit-list {
+.province-buildings {
+  margin: 0.3rem 0;
+}
+
+.province-panel .unit-list {
   list-style: none;
   padding: 0;
-  margin: 0.5rem 0;
-  font-size: 0.8rem;
-  max-height: 180px;
+  margin: 0.4rem 0;
+  font-size: 0.75rem;
+  max-height: 120px;
   overflow-y: auto;
 }
 
-.map-sidebar .move-hint {
-  font-size: 0.8rem;
+.province-panel .move-hint {
+  font-size: 0.78rem;
   color: #e5b93c;
   font-weight: bold;
+}
+
+.production-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+
+.production-buttons button {
+  flex: 1;
+  padding: 0.45rem 0.5rem;
+  cursor: pointer;
+  background: #38444f;
+  color: #dfe7ea;
+  border: 1px solid #171f26;
+  border-radius: 3px;
+}
+
+.production-buttons button:hover {
+  background: #45535f;
 }
