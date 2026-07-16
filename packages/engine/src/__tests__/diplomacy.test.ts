@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { createGameState } from "../state/createGameState";
 import { advanceTime } from "../turn/advanceTime";
-import { declareWarOn, hasRightOfWay, makePeace, setRightOfWay } from "../turn/diplomacy";
+import {
+  declareWarOn,
+  hasOfferedPeace,
+  hasRightOfWay,
+  offerPeace,
+  retractPeaceOffer,
+  setRightOfWay,
+} from "../turn/diplomacy";
 import { issueMoveOrder } from "../turn/orders";
 import { UNIT_TYPES } from "../state/UnitTypes";
 
@@ -30,29 +37,60 @@ function withUnit(state: ReturnType<typeof scenario>, id: string, ownerId: strin
   };
 }
 
-describe("declareWarOn / makePeace", () => {
-  it("war is mutual and logged; peace clears it on both sides", () => {
+describe("declareWarOn / peace offers", () => {
+  it("a lone peace offer does NOT end the war — both sides must agree", () => {
     let state = declareWarOn(scenario(), "A", "B");
     expect(state.countries.A.atWarWith).toContain("B");
-    expect(state.countries.B.atWarWith).toContain("A");
-    expect(state.countries.A.stances.B).toBe("war");
     expect(state.events.some((e) => e.kind === "warDeclared")).toBe(true);
 
-    state = makePeace(state, "B", "A");
+    state = offerPeace(state, "A", "B");
+    expect(hasOfferedPeace(state, "A", "B")).toBe(true);
+    expect(state.countries.A.atWarWith).toContain("B"); // still at war
+    expect(state.events.some((e) => e.kind === "peaceOffered")).toBe(true);
+    expect(state.events.some((e) => e.kind === "peaceMade")).toBe(false);
+  });
+
+  it("the war ends once the other side offers too (acceptance)", () => {
+    let state = declareWarOn(scenario(), "A", "B");
+    state = offerPeace(state, "A", "B");
+    state = offerPeace(state, "B", "A");
+
     expect(state.countries.A.atWarWith).not.toContain("B");
     expect(state.countries.B.atWarWith).not.toContain("A");
     expect(state.countries.A.stances.B).toBeUndefined();
+    expect(hasOfferedPeace(state, "A", "B")).toBe(false);
+    expect(hasOfferedPeace(state, "B", "A")).toBe(false);
     expect(state.events.some((e) => e.kind === "peaceMade")).toBe(true);
   });
 
-  it("declaring war twice or making peace without war are no-ops", () => {
+  it("offers can be retracted before acceptance", () => {
     let state = declareWarOn(scenario(), "A", "B");
-    const again = declareWarOn(state, "B", "A");
-    expect(again).toBe(state);
+    state = offerPeace(state, "A", "B");
+    state = retractPeaceOffer(state, "A", "B");
+    expect(hasOfferedPeace(state, "A", "B")).toBe(false);
 
-    state = makePeace(state, "A", "B");
-    const peaceAgain = makePeace(state, "A", "B");
-    expect(peaceAgain).toBe(state);
+    // B "accepting" now just opens a fresh offer of its own.
+    state = offerPeace(state, "B", "A");
+    expect(state.countries.A.atWarWith).toContain("B");
+  });
+
+  it("offering without war, offering twice, and re-declaring war are no-ops", () => {
+    const peaceful = scenario();
+    expect(offerPeace(peaceful, "A", "B")).toBe(peaceful);
+
+    let state = declareWarOn(peaceful, "A", "B");
+    state = offerPeace(state, "A", "B");
+    expect(offerPeace(state, "A", "B")).toBe(state);
+    expect(declareWarOn(state, "B", "A")).toBe(state);
+  });
+
+  it("declaring war clears any stale offers between the two", () => {
+    let state = declareWarOn(scenario(), "A", "B");
+    state = offerPeace(state, "A", "B");
+    state = offerPeace(state, "B", "A"); // peace concluded
+    state = declareWarOn(state, "B", "A"); // new war
+    expect(hasOfferedPeace(state, "A", "B")).toBe(false);
+    expect(state.countries.A.atWarWith).toContain("B");
   });
 });
 
@@ -84,7 +122,8 @@ describe("right of way", () => {
     const refused = setRightOfWay(state, "B", "A", true);
     expect(refused).toBe(state);
 
-    state = makePeace(state, "A", "B");
+    state = offerPeace(state, "A", "B");
+    state = offerPeace(state, "B", "A");
     state = setRightOfWay(state, "B", "A", true);
     expect(hasRightOfWay(state, "B", "A")).toBe(true);
     state = setRightOfWay(state, "B", "A", false);

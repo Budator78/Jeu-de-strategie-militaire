@@ -87,6 +87,7 @@ export function createGameState(input: CreateGameStateInput): GameState {
       alive: true,
       atWarWith: [],
       stances: {},
+      peaceOffersTo: [],
     };
   }
 

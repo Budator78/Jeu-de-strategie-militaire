@@ -106,6 +106,13 @@ export function eventToArticle(event: GameEvent, countryName: (id: string | null
         category: 'politique',
         involved: [event.aId, event.bId],
       }
+    case 'peaceOffered':
+      return {
+        headline: 'Proposition de paix',
+        body: `${formatEventTime(event.atMs)} — ${countryName(event.fromId)} tend la main à ${countryName(event.toId)} et propose un cessez-le-feu. La balle est dans leur camp.`,
+        category: 'politique',
+        involved: [event.fromId, event.toId],
+      }
     case 'rightOfWay':
       return {
         headline: event.granted ? 'Droit de passage accordé' : 'Droit de passage révoqué',

@@ -5,6 +5,7 @@ import { featureCollection, provinceFeatures } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { eventToArticle, formatEventTime } from '../../i18n/fr'
 import { countryColor } from '../../utils/countryColor'
+import { CountryFlag } from './CountryFlag'
 import './hud.css'
 
 const MINI_W = 300
@@ -182,7 +183,7 @@ export function NewspaperModal({ onClose }: { onClose: () => void }) {
                 nationsRanking.map((n, i) => (
                   <div key={n.id} className={`news-rank-row ${n.id === HUMAN_COUNTRY_ID ? 'me' : ''}`}>
                     <span className="news-rank-pos">{i + 1}.</span>
-                    <span className="news-rank-flag" style={{ background: countryColor(n.id) }} />
+                    <CountryFlag id={n.id} className="news-rank-flag" />
                     <span className="news-rank-name">{n.name}</span>
                     <span className="news-rank-star">★</span>
                     <span className="news-rank-score">{n.vp}</span>
@@ -193,7 +194,7 @@ export function NewspaperModal({ onClose }: { onClose: () => void }) {
                 productionRanking.map((n, i) => (
                   <div key={n.id} className={`news-rank-row ${n.id === HUMAN_COUNTRY_ID ? 'me' : ''}`}>
                     <span className="news-rank-pos">{i + 1}.</span>
-                    <span className="news-rank-flag" style={{ background: countryColor(n.id) }} />
+                    <CountryFlag id={n.id} className="news-rank-flag" />
                     <span className="news-rank-name">{n.name}</span>
                     <span className="news-rank-score">{n.perDay.toLocaleString('en-US')}/j</span>
                   </div>

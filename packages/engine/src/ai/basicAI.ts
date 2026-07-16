@@ -90,6 +90,18 @@ export const basicAI: AIStrategy = {
       }
     }
 
+    // Sue for peace when an enemy offers it and the war is going badly
+    // (fewer units than them) — otherwise fight on.
+    for (const enemyId of country.atWarWith) {
+      const enemy = state.countries[enemyId];
+      if (!enemy?.peaceOffersTo.includes(countryId)) continue;
+      const myUnits = Object.values(state.units).filter((u) => u.ownerId === countryId).length;
+      const theirUnits = Object.values(state.units).filter((u) => u.ownerId === enemyId).length;
+      if (myUnits < theirUnits) {
+        actions.push({ kind: "acceptPeace", targetId: enemyId });
+      }
+    }
+
     const pendingResearchCount = state.pendingOrders.filter(
       (o) => o.kind === "research" && o.ownerId === countryId,
     ).length;

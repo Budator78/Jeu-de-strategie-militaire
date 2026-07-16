@@ -1,19 +1,10 @@
 import { computeVictoryPoints } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
+import { CountryFlag } from './CountryFlag'
 import { HudIcon } from './icons'
 import './hud.css'
 
 const PLAYER_NAME = 'BUDATOR78'
-
-function GermanyFlag() {
-  return (
-    <svg viewBox="0 0 36 24" width={52} height={34} aria-hidden="true">
-      <rect width="36" height="8" fill="#1a1a1a" />
-      <rect y="8" width="36" height="8" fill="#c0392b" />
-      <rect y="16" width="36" height="8" fill="#e5b93c" />
-    </svg>
-  )
-}
 
 function formatDayTime(clockMs: number): { day: number; time: string } {
   const day = Math.floor(clockMs / 86_400_000) + 1
@@ -48,7 +39,7 @@ export function CountryPanel({
   return (
     <div className="country-panel">
       <div className="country-panel-header">
-        <GermanyFlag />
+        <CountryFlag id={HUMAN_COUNTRY_ID} className="cp-flag" />
         <div className="country-panel-titles">
           <div className="country-panel-player">{PLAYER_NAME}</div>
           <div className="country-panel-nation">{country.name.toUpperCase()}</div>

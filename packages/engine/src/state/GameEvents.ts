@@ -36,6 +36,7 @@ export type GameEvent =
       homelandId: string;
     }
   | { kind: "peaceMade"; atMs: number; aId: string; bId: string }
+  | { kind: "peaceOffered"; atMs: number; fromId: string; toId: string }
   | { kind: "rightOfWay"; atMs: number; granterId: string; toId: string; granted: boolean };
 
 export const MAX_EVENTS = 300;

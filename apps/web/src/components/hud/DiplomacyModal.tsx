@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { computeVictoryPoints, type DiplomaticStance } from '@con/engine'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { ACTIVE_AI_COUNTRY_CODES } from '../../state/scenario'
-import { countryColor, leaderCallsign } from '../../utils/countryColor'
+import { leaderCallsign } from '../../utils/countryColor'
+import { CountryFlag } from './CountryFlag'
 import './hud.css'
 
 const PLAYER_NAME = 'BUDATOR78'
@@ -42,7 +43,8 @@ function StanceIcon({ stance }: { stance: DiplomaticStance }) {
 export function DiplomacyModal({ onClose }: { onClose: () => void }) {
   const state = useGameStore((s) => s.state)
   const declareWar = useGameStore((s) => s.declareWar)
-  const offerPeace = useGameStore((s) => s.offerPeace)
+  const proposePeace = useGameStore((s) => s.proposePeace)
+  const withdrawPeaceOffer = useGameStore((s) => s.withdrawPeaceOffer)
   const grantPassage = useGameStore((s) => s.grantPassage)
   const [tab, setTab] = useState<DiploTab>('infos')
   const [search, setSearch] = useState('')
@@ -59,7 +61,9 @@ export function DiplomacyModal({ onClose }: { onClose: () => void }) {
         const atWar = human?.atWarWith.includes(c.id) ?? false
         const theirStance: DiplomaticStance = atWar ? 'war' : (c.stances[HUMAN_COUNTRY_ID] ?? 'peace')
         const yourStance: DiplomaticStance = atWar ? 'war' : (human?.stances[c.id] ?? 'peace')
-        return { country: c, cityCount, vp, theirStance, yourStance, atWar }
+        const youOffered = human?.peaceOffersTo.includes(c.id) ?? false
+        const theyOffered = c.peaceOffersTo.includes(HUMAN_COUNTRY_ID)
+        return { country: c, cityCount, vp, theirStance, yourStance, atWar, youOffered, theyOffered }
       })
       .filter((r) => !q || r.country.name.toLowerCase().includes(q))
       .sort((a, b) => b.vp - a.vp)
@@ -67,10 +71,10 @@ export function DiplomacyModal({ onClose }: { onClose: () => void }) {
 
   function onStanceChange(targetId: string, next: string) {
     if (next === 'war') declareWar(targetId)
-    else if (next === 'peace') {
-      offerPeace(targetId)
-      grantPassage(targetId, false)
-    } else if (next === 'rightOfWay') grantPassage(targetId, true)
+    else if (next === 'peace') grantPassage(targetId, false)
+    else if (next === 'rightOfWay') grantPassage(targetId, true)
+    else if (next === 'offerPeace' || next === 'acceptPeace') proposePeace(targetId)
+    else if (next === 'retractOffer') withdrawPeaceOffer(targetId)
   }
 
   return (
@@ -115,32 +119,61 @@ export function DiplomacyModal({ onClose }: { onClose: () => void }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({ country, cityCount, vp, theirStance, yourStance }) => {
+                  {rows.map(({ country, cityCount, vp, theirStance, yourStance, atWar, youOffered, theyOffered }) => {
                     const isActiveAI = ACTIVE_AI_COUNTRY_CODES.includes(country.id)
                     return (
                       <tr key={country.id}>
                         <td>
-                          <span className="diplo-flag" style={{ background: countryColor(country.id) }} />
+                          <CountryFlag id={country.id} />
                           <span className="diplo-nation">{country.name}</span>
                         </td>
                         <td className="diplo-leader">{country.isAI ? leaderCallsign(country.id) : PLAYER_NAME}</td>
                         <td className="diplo-num">{cityCount}</td>
                         <td className="diplo-num">★{vp}</td>
                         <td className="diplo-center">
-                          <StanceIcon stance={theirStance} />
+                          <span className="diplo-their-relation">
+                            <StanceIcon stance={theirStance} />
+                            {theyOffered && (
+                              <span className="peace-offer-hint" title="Propose la paix — à vous d'accepter">
+                                ✋
+                              </span>
+                            )}
+                          </span>
                         </td>
                         <td className="diplo-center">
                           <span className="diplo-your-relation">
                             <StanceIcon stance={yourStance} />
-                            <select
-                              value={yourStance}
-                              onChange={(e) => onStanceChange(country.id, e.target.value)}
-                              title="Changer vos relations"
-                            >
-                              <option value="peace">Paix</option>
-                              <option value="rightOfWay">Droit de passage</option>
-                              <option value="war">Guerre</option>
-                            </select>
+                            {!atWar ? (
+                              <select
+                                value={yourStance}
+                                onChange={(e) => onStanceChange(country.id, e.target.value)}
+                                title="Changer vos relations"
+                              >
+                                <option value="peace">Paix</option>
+                                <option value="rightOfWay">Droit de passage</option>
+                                <option value="war">Guerre</option>
+                              </select>
+                            ) : (
+                              <select
+                                value={youOffered ? 'offered' : 'war'}
+                                onChange={(e) => onStanceChange(country.id, e.target.value)}
+                                title="Changer vos relations"
+                              >
+                                <option value="war">Guerre</option>
+                                {youOffered ? (
+                                  <>
+                                    <option value="offered" disabled>
+                                      Offre de paix envoyée…
+                                    </option>
+                                    <option value="retractOffer">Retirer l'offre</option>
+                                  </>
+                                ) : theyOffered ? (
+                                  <option value="acceptPeace">Accepter la paix</option>
+                                ) : (
+                                  <option value="offerPeace">Proposer la paix</option>
+                                )}
+                              </select>
+                            )}
                           </span>
                         </td>
                         <td className="diplo-center diplo-playertype">

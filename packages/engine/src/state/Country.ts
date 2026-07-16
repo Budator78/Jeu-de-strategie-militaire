@@ -35,4 +35,10 @@ export interface Country {
    * turn/diplomacy.ts.
    */
   stances: Record<string, DiplomaticStance>;
+  /**
+   * Standing peace offers this country has extended. A war only ends when
+   * BOTH sides have offered (i.e. the other side accepts) — see
+   * turn/diplomacy.ts offerPeace.
+   */
+  peaceOffersTo: string[];
 }

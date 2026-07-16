@@ -7,7 +7,8 @@ export type AIAction =
   | { kind: "build"; provinceId: string; unitType: UnitTypeId }
   | { kind: "move"; unitId: string; toProvinceId: string }
   | { kind: "construct"; provinceId: string; buildingId: BuildingId }
-  | { kind: "research"; researchId: ResearchId };
+  | { kind: "research"; researchId: ResearchId }
+  | { kind: "acceptPeace"; targetId: string };
 
 export interface AIStrategy {
   /** Pure decision function: given the current state, what would this AI-controlled country do right now? */

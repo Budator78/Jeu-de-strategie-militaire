@@ -6,11 +6,13 @@ import {
   createGameState,
   declareWarOn,
   executeMarketTrade,
+  hasOfferedPeace,
   issueBuildOrder,
   issueConstructOrder,
   issueMoveOrder,
   issueResearchOrder,
-  makePeace,
+  offerPeace,
+  retractPeaceOffer,
   setRightOfWay,
   writeArticle,
   type BuildingId,
@@ -25,8 +27,8 @@ export const HUMAN_COUNTRY_ID = 'DEU'
 /** 1 real second = this many simulated seconds. The source game runs at 1x (real time). */
 export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
 
-// v4: Country grew stances (diplomacy) — older saves are incompatible.
-const SAVE_KEY = 'con-like-save-v4'
+// v5: Country grew peaceOffersTo (mutual-consent peace) — older saves are incompatible.
+const SAVE_KEY = 'con-like-save-v5'
 const AUTOSAVE_EVERY_N_TICKS = 20
 
 interface SaveFile {
@@ -52,7 +54,8 @@ interface GameStore {
   publishArticle: (title: string, body: string) => void
   boostMorale: (provinceId: string) => void
   declareWar: (targetId: string) => void
-  offerPeace: (targetId: string) => void
+  proposePeace: (targetId: string) => void
+  withdrawPeaceOffer: (targetId: string) => void
   grantPassage: (targetId: string, granted: boolean) => void
   saveGame: () => void
   loadGame: () => void
@@ -63,9 +66,18 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
   let orderId = startOrderId
   let nextState = state
   for (const country of Object.values(nextState.countries)) {
+    if (!country.isAI) continue
     // Passive nations (everyone except ACTIVE_AI_COUNTRY_CODES) own their
     // territory and start with a garrison, but never act — see scenario.ts.
-    if (!country.isAI || !ACTIVE_AI_COUNTRY_CODES.includes(country.id)) continue
+    // Their one reaction: they gladly accept any peace offer extended to them.
+    if (!ACTIVE_AI_COUNTRY_CODES.includes(country.id)) {
+      for (const enemyId of country.atWarWith) {
+        if (hasOfferedPeace(nextState, enemyId, country.id)) {
+          nextState = offerPeace(nextState, country.id, enemyId)
+        }
+      }
+      continue
+    }
     for (const action of basicAI.decide(nextState, country.id)) {
       const id = `ai-order-${orderId++}`
       if (action.kind === 'build') {
@@ -74,6 +86,8 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
         nextState = issueConstructOrder(nextState, id, country.id, action.provinceId, action.buildingId)
       } else if (action.kind === 'research') {
         nextState = issueResearchOrder(nextState, id, country.id, action.researchId)
+      } else if (action.kind === 'acceptPeace') {
+        nextState = offerPeace(nextState, country.id, action.targetId)
       } else {
         nextState = issueMoveOrder(nextState, id, country.id, action.unitId, action.toProvinceId)
       }
@@ -166,8 +180,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   declareWar: (targetId) => {
     set((s) => ({ state: declareWarOn(s.state, HUMAN_COUNTRY_ID, targetId) }))
   },
-  offerPeace: (targetId) => {
-    set((s) => ({ state: makePeace(s.state, HUMAN_COUNTRY_ID, targetId) }))
+  proposePeace: (targetId) => {
+    set((s) => ({ state: offerPeace(s.state, HUMAN_COUNTRY_ID, targetId) }))
+  },
+  withdrawPeaceOffer: (targetId) => {
+    set((s) => ({ state: retractPeaceOffer(s.state, HUMAN_COUNTRY_ID, targetId) }))
   },
   grantPassage: (targetId, granted) => {
     set((s) => ({ state: setRightOfWay(s.state, HUMAN_COUNTRY_ID, targetId, granted) }))
