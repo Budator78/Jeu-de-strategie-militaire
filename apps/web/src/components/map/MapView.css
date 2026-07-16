@@ -323,6 +323,277 @@
   font-style: italic;
 }
 
+/* ---------- Army panel (stack selection, reference layout) ---------- */
+
+.army-panel-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.army-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.army-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 74px;
+  padding: 0.35rem 0.5rem;
+  background: #38444fee;
+  color: #dfe7ea;
+  border: 1px solid #171f26;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.army-action-icon {
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.army-action-move.active {
+  background: #4a7c59ee;
+}
+
+.army-action-attack.active {
+  background: #b04a3eee;
+}
+
+.army-action-load {
+  background: #6a4a8cee;
+}
+
+.army-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.army-action:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.army-panel {
+  width: min(760px, 96vw);
+  background: #2b3540f5;
+  border: 1px solid #171f26;
+  border-radius: 4px;
+  color: #dfe7ea;
+  font-family: 'Segoe UI', sans-serif;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+}
+
+.army-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: #f2f4f5;
+  color: #26313a;
+  padding: 0.4rem 0.7rem;
+  border-radius: 4px 4px 0 0;
+}
+
+.army-panel-title {
+  flex: 1;
+  font-size: 1rem;
+}
+
+.army-u {
+  font-weight: 700;
+}
+
+.army-panel-body {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  padding: 0.7rem 2rem;
+  align-items: stretch;
+}
+
+.army-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.army-block-photo {
+  flex: 0 0 170px;
+}
+
+.army-hp {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.army-hp-bar {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: #1a2229;
+  border: 1px solid #171f26;
+}
+
+.army-hp-fill {
+  height: 100%;
+  background: #9fc3dd;
+}
+
+.army-hp-text {
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 14px;
+  color: #10161b;
+}
+
+.army-heal {
+  width: 24px;
+  height: 20px;
+  background: linear-gradient(#c99a2e, #a87c1d);
+  border: 1px solid #7e5c14;
+  border-radius: 3px;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.army-block-stats {
+  flex: 0 0 190px;
+  gap: 0.25rem;
+}
+
+.army-stat {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid #38444f;
+  padding: 0.12rem 0;
+}
+
+.army-stat-label {
+  font-size: 0.66rem;
+  color: #9aa7b0;
+  font-weight: 600;
+}
+
+.army-stat-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.army-stat-value.inactive {
+  color: #9aa7b0;
+}
+
+.army-block-units {
+  flex: 1 1 auto;
+}
+
+.army-unit-slots {
+  display: flex;
+  gap: 18px;
+  padding: 0.5rem 0.4rem;
+}
+
+.army-unit-slot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.army-unit-chevron {
+  color: #e5b93c;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.army-unit-diamond {
+  width: 40px;
+  height: 40px;
+  transform: rotate(45deg);
+  border: 1.5px solid #55636e;
+  background: #38444f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 5px;
+}
+
+.army-unit-diamond svg {
+  transform: rotate(-45deg);
+  width: 24px;
+  height: 24px;
+  color: #c8d2d8;
+}
+
+.army-unit-count {
+  background: #4a6d8c;
+  color: #fff;
+  border-radius: 2px;
+  min-width: 22px;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 3px;
+}
+
+.army-unit-slot.empty {
+  justify-content: center;
+  color: #55636e;
+  font-size: 1.2rem;
+  min-width: 50px;
+}
+
+.army-block-activity {
+  flex: 0 0 150px;
+}
+
+.army-activity-row {
+  font-size: 0.72rem;
+  color: #9aa7b0;
+}
+
+.army-activity-row.moving {
+  color: #e5b93c;
+}
+
+.army-activity-place {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.army-activity-hint {
+  margin-top: auto;
+  font-size: 0.64rem;
+  color: #9aa7b0;
+  font-style: italic;
+}
+
+.army-block-activity .move-stop-btn {
+  margin: 0.3rem 0;
+  align-self: flex-start;
+}
+
 /* ---------- City panel (bottom-center, reference layout) ---------- */
 
 .city-panel {

@@ -204,7 +204,20 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
       captureProvince(draft, order.toProvinceId, unit.ownerId);
     }
     continuePath(draft, order);
+    return;
   }
-  // else: attacker survived but defenders remain — bounced back, the rest of
-  // the path is dropped (no new hop is queued).
+
+  // Attacker survived but defenders remain: regroup and assault the same
+  // province again, keeping the rest of the route — the unit presses on
+  // until it breaks through or dies (use Stopper to call it off).
+  draft.pendingOrders.push({
+    kind: "move",
+    id: `${order.id}~`,
+    ownerId: order.ownerId,
+    unitId: order.unitId,
+    fromProvinceId: order.fromProvinceId,
+    toProvinceId: order.toProvinceId,
+    remainingPath: order.remainingPath,
+    completesAt: draft.clockMs + UNIT_TYPES[unit.type].moveTimeMs,
+  });
 }

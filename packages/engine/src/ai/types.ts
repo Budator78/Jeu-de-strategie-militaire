@@ -10,7 +10,16 @@ export type AIAction =
   | { kind: "research"; researchId: ResearchId }
   | { kind: "acceptPeace"; targetId: string };
 
+export interface AIOptions {
+  /**
+   * When true (the default), the AI plays under the same fog of war as the
+   * human: it only reads enemy positions within its own sight range. The
+   * admin toggle that reveals the map lifts the fog for everyone.
+   */
+  fogOfWar?: boolean;
+}
+
 export interface AIStrategy {
   /** Pure decision function: given the current state, what would this AI-controlled country do right now? */
-  decide(state: GameState, countryId: string): AIAction[];
+  decide(state: GameState, countryId: string, options?: AIOptions): AIAction[];
 }

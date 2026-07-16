@@ -61,9 +61,9 @@ describe("issueMovePathOrder", () => {
     expect(state.units.u1.provinceId).toBe("P1");
   });
 
-  it("a combat bounce drops the rest of the route", () => {
+  it("a combat bounce re-queues the assault — the unit presses on instead of abandoning its route", () => {
     let state = scenario();
-    // Strong garrison in enemy P4 so the attacker bounces.
+    // Strong garrison in enemy P4 so the first assault bounces.
     state = {
       ...state,
       units: {
@@ -72,14 +72,26 @@ describe("issueMovePathOrder", () => {
         d2: { id: "d2", type: "tank" as const, ownerId: "B", provinceId: "P4", health: 100, attack: 16, defense: 12 },
       },
     };
-    state = issueMovePathOrder(state, "m1", "A", "u1", ["P2", "P3", "P4", "P3"]);
+    state = issueMovePathOrder(state, "m1", "A", "u1", ["P2", "P3", "P4"]);
     state = advanceTime(state, HOP + 1);
     state = advanceTime(state, HOP + 1);
     expect(state.units.u1.provinceId).toBe("P3");
-    state = advanceTime(state, HOP + 1); // attack into P4 → bounce (or death)
+
+    state = advanceTime(state, HOP + 1); // first assault into P4
     if (state.units.u1) {
       expect(state.units.u1.provinceId).toBe("P3"); // bounced, stayed put
-      expect(state.pendingOrders).toHaveLength(0); // path dropped
+      // The same hop is re-queued — the unit keeps fighting for P4.
+      const retry = state.pendingOrders.find((o) => o.kind === "move" && o.unitId === "u1");
+      expect(retry).toMatchObject({ toProvinceId: "P4" });
     }
+
+    // Left to fight it out, the battle resolves one way or the other:
+    // either u1 eventually dies, or it breaks through and takes P4.
+    for (let i = 0; i < 30 && state.units.u1 && state.units.u1.provinceId !== "P4"; i++) {
+      state = advanceTime(state, HOP + 1);
+    }
+    const brokeThrough = state.units.u1?.provinceId === "P4";
+    const died = !state.units.u1;
+    expect(brokeThrough || died).toBe(true);
   });
 });

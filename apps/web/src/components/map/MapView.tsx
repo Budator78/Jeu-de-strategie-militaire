@@ -3,12 +3,13 @@ import { geoNaturalEarth1, geoPath } from 'd3-geo'
 import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
-import type { Unit } from '@con/engine'
+import { computeVisibleProvinces, type Unit } from '@con/engine'
 import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
 import { HudIcon } from '../hud/icons'
+import { ArmyPanel } from './ArmyPanel'
 import { CityPanel } from './CityPanel'
 import './MapView.css'
 
@@ -116,7 +117,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const units = useGameStore((s) => s.state.units)
   const pendingOrders = useGameStore((s) => s.state.pendingOrders)
   const queueMovePath = useGameStore((s) => s.queueMovePath)
-  const stopUnit = useGameStore((s) => s.stopUnit)
   const fogOfWar = useGameStore((s) => s.fogOfWar)
 
   useEffect(() => {
@@ -165,11 +165,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     [units, selectedId],
   )
 
-  const movingUnitIds = useMemo(
-    () => new Set(pendingOrders.filter((o) => o.kind === 'move').map((o) => (o.kind === 'move' ? o.unitId : ''))),
-    [pendingOrders],
-  )
-
   const unitStacks = useMemo(() => {
     const byKey = new Map<string, UnitStack>()
     for (const unit of Object.values(units)) {
@@ -204,6 +199,15 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   }, [units])
 
   const selectedStack = selectedStackKey ? (unitStacks.find((s) => s.key === selectedStackKey) ?? null) : null
+  const humanStacks = useMemo(() => unitStacks.filter((s) => s.ownerId === HUMAN_COUNTRY_ID), [unitStacks])
+
+  function cycleStack(delta: number) {
+    if (humanStacks.length === 0 || !selectedStack) return
+    const index = humanStacks.findIndex((s) => s.key === selectedStack.key)
+    const next = humanStacks[(index + delta + humanStacks.length) % humanStacks.length]
+    setSelectedStackKey(next.key)
+    setSelectedId(next.provinceId)
+  }
 
   // Deselect the stack with Escape, like an RTS.
   useEffect(() => {
@@ -215,24 +219,13 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   }, [])
 
   /**
-   * Fog of war (view-level): you see your own provinces, their neighbors,
-   * and anywhere your units stand (plus one province around them). null when
+   * Fog of war (shared engine rule, also applied to the AI): your provinces
+   * plus neighbors, and one province around each of your units. null when
    * the admin toggle disables fog — everything visible.
    */
   const visibleProvinces = useMemo(() => {
     if (!fogOfWar) return null
-    const visible = new Set<string>()
-    const reveal = (id: string) => {
-      visible.add(id)
-      for (const neighbor of adjacency[id] ?? []) visible.add(neighbor)
-    }
-    for (const province of Object.values(provinces)) {
-      if (province.ownerId === HUMAN_COUNTRY_ID) reveal(province.id)
-    }
-    for (const unit of Object.values(units)) {
-      if (unit.ownerId === HUMAN_COUNTRY_ID) reveal(unit.provinceId)
-    }
-    return visible
+    return computeVisibleProvinces(provinces, units, HUMAN_COUNTRY_ID)
   }, [fogOfWar, provinces, units])
 
   // Marching routes of your own units (current hop + queued waypoints),
@@ -336,6 +329,13 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         className={`map-svg ${selectedStack ? 'targeting' : ''}`}
         role="img"
         aria-label="Carte du monde"
+        onClick={(event) => {
+          // A click on the bare ocean (not a province/stack) closes whatever is open.
+          if (event.target === event.currentTarget) {
+            setSelectedId(null)
+            setSelectedStackKey(null)
+          }
+        }}
       >
         <g ref={gRef}>
           {provinceFeatures.map((f) => {
@@ -481,22 +481,13 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
       )}
 
       {selectedStack && (
-        <p className="move-hint move-hint-floating">
-          Pile de {selectedStack.units.length} sélectionnée — cliquez une destination n'importe où sur la carte
-          (Échap pour annuler).
-          {selectedStack.units.some((u) => movingUnitIds.has(u.id)) && (
-            <button
-              type="button"
-              className="move-stop-btn"
-              onClick={() => {
-                for (const unit of selectedStack.units) stopUnit(unit.id)
-                setSelectedStackKey(null)
-              }}
-            >
-              ■ Stopper
-            </button>
-          )}
-        </p>
+        <ArmyPanel
+          units={selectedStack.units}
+          provinceId={selectedStack.provinceId}
+          stackIndex={humanStacks.findIndex((s) => s.key === selectedStack.key)}
+          onClose={() => setSelectedStackKey(null)}
+          onCycle={cycleStack}
+        />
       )}
     </div>
   )

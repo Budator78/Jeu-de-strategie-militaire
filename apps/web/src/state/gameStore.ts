@@ -69,7 +69,11 @@ interface GameStore {
   newGame: () => void
 }
 
-function runAI(state: GameState, startOrderId: number): { state: GameState; nextOrderId: number } {
+function runAI(
+  state: GameState,
+  startOrderId: number,
+  fogOfWar: boolean,
+): { state: GameState; nextOrderId: number } {
   let orderId = startOrderId
   let nextState = state
   for (const country of Object.values(nextState.countries)) {
@@ -85,7 +89,7 @@ function runAI(state: GameState, startOrderId: number): { state: GameState; next
       }
       continue
     }
-    for (const action of basicAI.decide(nextState, country.id)) {
+    for (const action of basicAI.decide(nextState, country.id, { fogOfWar })) {
       const id = `ai-order-${orderId++}`
       if (action.kind === 'build') {
         nextState = issueBuildOrder(nextState, id, country.id, action.provinceId, action.unitType)
@@ -144,7 +148,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   tick: (elapsedMs) =>
     set((s) => {
       const advanced = advanceTime(s.state, elapsedMs)
-      const { state, nextOrderId } = runAI(advanced, s.nextOrderId)
+      const { state, nextOrderId } = runAI(advanced, s.nextOrderId, s.fogOfWar)
       const ticksSinceAutosave = s.ticksSinceAutosave + 1
       if (ticksSinceAutosave >= AUTOSAVE_EVERY_N_TICKS) {
         writeSaveFile({ state, nextOrderId })

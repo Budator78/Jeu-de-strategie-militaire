@@ -5,6 +5,7 @@ import type { Province } from "../state/Province";
 import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from "../state/ResearchTypes";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES, type UnitTypeId } from "../state/UnitTypes";
+import { computeVisibleProvinces } from "../state/visibility";
 import type { AIAction, AIStrategy } from "./types";
 
 /** Infantry first (only infantry can capture territory), then armor, then air. */
@@ -65,10 +66,15 @@ function isAttackable(state: GameState, country: Country, target: Province): boo
  * "full sending" every idle unit at the nearest target.
  */
 export const basicAI: AIStrategy = {
-  decide(state, countryId) {
+  decide(state, countryId, options) {
     const actions: AIAction[] = [];
     const country = state.countries[countryId];
     if (!country || !country.alive) return actions;
+
+    // Under fog (the default), the AI only "sees" enemy units inside its own
+    // sight range — same rule as the human player. null = admin revealed map.
+    const fogEnabled = options?.fogOfWar ?? true;
+    const visible = fogEnabled ? computeVisibleProvinces(state.provinces, state.units, countryId) : null;
 
     for (const province of Object.values(state.provinces)) {
       if (province.ownerId !== countryId || !province.isCity) continue;
@@ -91,12 +97,15 @@ export const basicAI: AIStrategy = {
     }
 
     // Sue for peace when an enemy offers it and the war is going badly
-    // (fewer units than them) — otherwise fight on.
+    // (fewer units than them) — otherwise fight on. Under fog, the AI can
+    // only weigh the enemy units it actually sees.
     for (const enemyId of country.atWarWith) {
       const enemy = state.countries[enemyId];
       if (!enemy?.peaceOffersTo.includes(countryId)) continue;
       const myUnits = Object.values(state.units).filter((u) => u.ownerId === countryId).length;
-      const theirUnits = Object.values(state.units).filter((u) => u.ownerId === enemyId).length;
+      const theirUnits = Object.values(state.units).filter(
+        (u) => u.ownerId === enemyId && (!visible || visible.has(u.provinceId)),
+      ).length;
       if (myUnits < theirUnits) {
         actions.push({ kind: "acceptPeace", targetId: enemyId });
       }

@@ -10,6 +10,7 @@ export * from "./state/BuildingTypes";
 export * from "./state/ResearchTypes";
 export * from "./state/MarketTypes";
 export * from "./state/GameEvents";
+export * from "./state/visibility";
 export * from "./state/GameState";
 export * from "./state/createGameState";
 export * from "./turn/economyResolver";
