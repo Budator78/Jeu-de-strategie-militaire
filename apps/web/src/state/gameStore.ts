@@ -30,7 +30,8 @@ export const HUMAN_COUNTRY_ID = 'DEU'
 export const AVAILABLE_TIME_SCALES = [1, 5, 15, 60, 300] as const
 
 // v5: Country grew peaceOffersTo (mutual-consent peace) — older saves are incompatible.
-const SAVE_KEY = 'con-like-save-v5'
+// v6: full buildings roster (placement rules, new effects).
+const SAVE_KEY = 'con-like-save-v6'
 const AUTOSAVE_EVERY_N_TICKS = 20
 
 interface SaveFile {
@@ -44,6 +45,8 @@ interface GameStore {
   timeScale: number
   /** View-level fog of war; the admin toggle in settings turns it off to reveal the whole map. */
   fogOfWar: boolean
+  /** Owner-only cheats unlocked; gates the fog toggle (see readAdminMode). */
+  admin: boolean
   nextOrderId: number
   ticksSinceAutosave: number
   hasSave: boolean
@@ -128,6 +131,7 @@ function writeSaveFile(save: SaveFile) {
 const initialSave = readSaveFile()
 
 const FOG_KEY = 'con-like-fog'
+const ADMIN_KEY = 'con-like-admin'
 
 function readFogSetting(): boolean {
   try {
@@ -137,11 +141,31 @@ function readFogSetting(): boolean {
   }
 }
 
+/**
+ * Admin mode gates owner-only cheats (e.g. disabling fog of war). Unlocked
+ * once by visiting the app with ?admin=1, then remembered — so the toggle
+ * only ever appears for whoever holds that link, not every player.
+ */
+function readAdminMode(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('admin') === '1') {
+      localStorage.setItem(ADMIN_KEY, '1')
+      return true
+    }
+    return localStorage.getItem(ADMIN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   state: initialSave?.state ?? createGameState(buildScenario(HUMAN_COUNTRY_ID)),
   paused: false,
   timeScale: 1,
-  fogOfWar: readFogSetting(),
+  admin: readAdminMode(),
+  // Non-admins are always under fog; only admins keep their saved preference.
+  fogOfWar: readAdminMode() ? readFogSetting() : true,
   nextOrderId: initialSave?.nextOrderId ?? 1,
   ticksSinceAutosave: 0,
   hasSave: initialSave !== null,

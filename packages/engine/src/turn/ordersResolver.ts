@@ -1,4 +1,5 @@
 import { produce } from "immer";
+import { provinceDefenseBonus } from "../state/BuildingTypes";
 import { MAX_EVENTS, type GameEvent } from "../state/GameEvents";
 import type { GameState } from "../state/GameState";
 import { CAPTURED_MORALE } from "../rules/balance";
@@ -178,7 +179,8 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
     return;
   }
 
-  const outcome = resolveCombat(unit, defenders, draft.rngState);
+  const defenseMultiplier = 1 + provinceDefenseBonus(destination);
+  const outcome = resolveCombat(unit, defenders, draft.rngState, defenseMultiplier);
   draft.rngState = outcome.nextRngSeed;
 
   for (const defender of defenders) {

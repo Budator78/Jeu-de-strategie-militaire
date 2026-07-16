@@ -28,6 +28,28 @@ export const UNIT_LABELS_FR: Record<UnitTypeId, string> = {
 export const BUILDING_LABELS_FR: Record<BuildingId, string> = {
   armsIndustry: "Industrie d'armement",
   recruitingOffice: 'Bureau de recrutement',
+  localIndustry: 'Industrie locale',
+  annexCity: 'Annexer la ville',
+  armyBase: 'Base militaire',
+  airBase: 'Base aérienne',
+  militaryHospital: 'Hôpital militaire',
+  fieldHospital: 'Hôpital de campagne',
+  undergroundBunkers: 'Bunkers souterrains',
+  combatOutpost: 'Avant-poste de combat',
+}
+
+/** One-line effect summary shown in the construction modal. */
+export const BUILDING_EFFECTS_FR: Record<BuildingId, string> = {
+  armsIndustry: '+10% à toutes les ressources de la ville',
+  recruitingOffice: "+25% de main-d'œuvre",
+  localIndustry: '+25% aux ressources de la province',
+  annexCity: 'Production occupée 25% → 50%',
+  armyBase: '+25% défense de la garnison',
+  airBase: 'Débloque la mobilisation aérienne',
+  militaryHospital: '+20 PdV/jour de soin',
+  fieldHospital: 'Permet le soin en province (+5 PdV/jour)',
+  undergroundBunkers: '+40% défense de la garnison',
+  combatOutpost: '+20% défense de la garnison',
 }
 
 export const RESEARCH_LABELS_FR: Record<ResearchId, string> = {

@@ -92,25 +92,84 @@ export function UnitIcon({ type }: { type: UnitTypeId }) {
 }
 
 export function BuildingIcon({ id }: { id: string }) {
-  if (id === 'armsIndustry') {
-    return (
-      <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
-        <rect x="4" y="16" width="24" height="12" fill="currentColor" />
-        <rect x="8" y="6" width="4" height="12" fill="currentColor" />
-        <rect x="16" y="9" width="4" height="9" fill="currentColor" />
-        <path d="M4 16 L11 10 L18 16 Z" fill="currentColor" />
-      </svg>
-    )
+  switch (id) {
+    case 'armsIndustry':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="4" y="16" width="24" height="12" fill="currentColor" />
+          <rect x="8" y="6" width="4" height="12" fill="currentColor" />
+          <rect x="16" y="9" width="4" height="9" fill="currentColor" />
+          <path d="M4 16 L11 10 L18 16 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'localIndustry':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="5" y="17" width="22" height="11" fill="currentColor" />
+          <path d="M9 17 L9 11 L14 14 L14 11 L19 14 L19 11 L24 14 L24 17 Z" fill="currentColor" />
+          <rect x="11" y="4" width="3" height="7" fill="currentColor" />
+        </svg>
+      )
+    case 'annexCity':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="6" y="12" width="20" height="16" fill="currentColor" />
+          <rect x="10" y="16" width="3" height="3" fill="#0000" stroke="#00000055" />
+          <path d="M16 3 L16 12 M12 6 L16 3 L20 6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )
+    case 'armyBase':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <path d="M4 26 L4 14 L16 8 L28 14 L28 26 Z" fill="currentColor" />
+          <path d="M16 8 L16 3 L24 5 L16 7" fill="currentColor" />
+          <rect x="13" y="19" width="6" height="7" fill="#00000055" />
+        </svg>
+      )
+    case 'airBase':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="4" y="22" width="24" height="6" rx="1" fill="currentColor" />
+          <path d="M16 5 L18 14 L26 17 L18 16 L16 22 L14 16 L6 17 L14 14 Z" fill="currentColor" />
+        </svg>
+      )
+    case 'militaryHospital':
+    case 'fieldHospital':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="6" y="8" width="20" height="20" rx="2" fill="currentColor" />
+          <rect x="14.5" y="12" width="3" height="12" fill="#00000066" />
+          <rect x="10" y="16.5" width="12" height="3" fill="#00000066" />
+        </svg>
+      )
+    case 'undergroundBunkers':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <path d="M4 26 Q4 15 16 15 Q28 15 28 26 Z" fill="currentColor" />
+          <rect x="13" y="19" width="6" height="7" fill="#00000066" />
+          <rect x="2" y="26" width="28" height="3" fill="currentColor" />
+        </svg>
+      )
+    case 'combatOutpost':
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <path d="M8 28 L10 12 L22 12 L24 28 Z" fill="currentColor" />
+          <rect x="9" y="8" width="14" height="5" fill="currentColor" />
+          <path d="M9 8 L11 5 L21 5 L23 8 Z" fill="currentColor" />
+          <rect x="14" y="20" width="4" height="8" fill="#00000066" />
+        </svg>
+      )
+    case 'recruitingOffice':
+    default:
+      return (
+        <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
+          <rect x="7" y="14" width="18" height="14" fill="currentColor" />
+          <path d="M4 14 L16 5 L28 14 Z" fill="currentColor" />
+          <rect x="19" y="2" width="1.5" height="10" fill="currentColor" />
+          <path d="M20.5 2 L27 4.5 L20.5 7 Z" fill="currentColor" />
+        </svg>
+      )
   }
-  // recruitingOffice (and any future default)
-  return (
-    <svg viewBox="0 0 32 32" width={32} height={32} aria-hidden="true">
-      <rect x="7" y="14" width="18" height="14" fill="currentColor" />
-      <path d="M4 14 L16 5 L28 14 Z" fill="currentColor" />
-      <rect x="19" y="2" width="1.5" height="10" fill="currentColor" />
-      <path d="M20.5 2 L27 4.5 L20.5 7 Z" fill="currentColor" />
-    </svg>
-  )
 }
 
 export function ResearchIcon() {

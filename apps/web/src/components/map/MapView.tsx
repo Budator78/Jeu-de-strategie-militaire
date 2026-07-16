@@ -7,7 +7,8 @@ import { computeVisibleProvinces, type Unit } from '@con/engine'
 import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
-import { RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
+import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
+import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
 import { HudIcon } from '../hud/icons'
 import { ArmyPanel } from './ArmyPanel'
 import { CityPanel } from './CityPanel'
@@ -111,6 +112,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedStackKey, setSelectedStackKey] = useState<string | null>(null)
+  const [provinceConstructOpen, setProvinceConstructOpen] = useState(false)
   const [zoomScale, setZoomScale] = useState(1)
   const provinces = useGameStore((s) => s.state.provinces)
   const countries = useGameStore((s) => s.state.countries)
@@ -304,6 +306,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     }
     setSelectedStackKey(null)
     setSelectedId(provinceId)
+    setProvinceConstructOpen(false)
   }
 
   function handleStackClick(stack: UnitStack, event: React.MouseEvent) {
@@ -464,6 +467,11 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               </li>
             ))}
           </ul>
+          {selectedState.buildings.length > 0 && (
+            <p className="province-buildings">
+              Bâtiments : {selectedState.buildings.map((b) => BUILDING_LABELS_FR[b]).join(', ')}
+            </p>
+          )}
           {visibleProvinces && !visibleProvinces.has(selected.id) ? (
             <p className="province-fog-note">Zone hors de portée de vos renseignements.</p>
           ) : (
@@ -477,7 +485,18 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               </ul>
             )
           )}
+          {selectedState.ownerId === HUMAN_COUNTRY_ID && (
+            <div className="production-buttons">
+              <button type="button" onClick={() => setProvinceConstructOpen(true)}>
+                Construire un bâtiment
+              </button>
+            </div>
+          )}
         </div>
+      )}
+
+      {provinceConstructOpen && selected && selectedState && !selectedState.isCity && (
+        <ConstructBuildingModal provinceId={selected.id} onClose={() => setProvinceConstructOpen(false)} />
       )}
 
       {selectedStack && (

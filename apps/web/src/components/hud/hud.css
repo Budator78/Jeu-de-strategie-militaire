@@ -970,6 +970,19 @@
   color: #9aa7b0;
 }
 
+.production-effect {
+  margin: 0 0 0.1rem;
+  font-size: 0.72rem;
+  color: #7ad068;
+}
+
+.production-locked {
+  margin: 0 0 0.1rem;
+  font-size: 0.72rem;
+  color: #e07a6b;
+  font-weight: 600;
+}
+
 .production-card button {
   flex: 0 0 auto;
   padding: 0.35rem 0.85rem;

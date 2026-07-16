@@ -38,5 +38,7 @@ export const MORALE_BOOST_GOLD_COST = 500;
 export const MORALE_BOOST_AMOUNT = 10;
 /** Occupied territory produces at a quarter rate, per the wiki's production table. */
 export const OCCUPIED_PRODUCTION_FACTOR = 0.25;
+/** Annexed occupied territory (with an Annex City building) produces at half rate, per the wiki. */
+export const ANNEXED_PRODUCTION_FACTOR = 0.5;
 /** Health regained per simulated day by units garrisoned in a friendly city. */
 export const CITY_HEAL_PER_DAY = 10;

@@ -1,6 +1,8 @@
 import { produce } from "immer";
+import { BUILDING_TYPES } from "../state/BuildingTypes";
 import { MAX_EVENTS } from "../state/GameEvents";
 import type { GameState } from "../state/GameState";
+import type { Province } from "../state/Province";
 import {
   CITY_HEAL_PER_DAY,
   HOMELAND_MORALE_TARGET,
@@ -17,6 +19,19 @@ import { nextRandom } from "../utils/rng";
 const DAY_MS = 86_400_000;
 
 /**
+ * Hp-per-day a province heals friendly units at: the base city rate, or 0 on
+ * plain land unless a Field Hospital enables province healing, plus any
+ * hospital bonus. Occupied/foreign land doesn't heal you.
+ */
+function provinceHealPerDay(province: Province, unitOwnerId: string): number {
+  if (province.ownerId !== unitOwnerId) return 0;
+  const bonus = province.buildings.reduce((sum, b) => sum + (BUILDING_TYPES[b].healBonusPerDay ?? 0), 0);
+  if (province.isCity) return CITY_HEAL_PER_DAY + bonus;
+  const canHeal = province.buildings.some((b) => BUILDING_TYPES[b].enablesProvinceHealing);
+  return canHeal ? CITY_HEAL_PER_DAY + bonus : 0;
+}
+
+/**
  * Continuous morale simulation, run from advanceTime:
  * - every province drifts toward its target (homeland high, occupied low);
  * - occupied land below the uprising threshold, left ungarrisoned by its
@@ -29,7 +44,7 @@ export function resolveMorale(state: GameState, elapsedMs: number): GameState {
   if (elapsedMs <= 0) return state;
   const drift = MORALE_DRIFT_PER_DAY * (elapsedMs / DAY_MS);
   const uprisingChance = UPRISING_CHANCE_PER_DAY * (elapsedMs / DAY_MS);
-  const heal = CITY_HEAL_PER_DAY * (elapsedMs / DAY_MS);
+  const dayFraction = elapsedMs / DAY_MS;
 
   return produce(state, (draft) => {
     const garrisonedBy = new Map<string, Set<string>>();
@@ -86,8 +101,10 @@ export function resolveMorale(state: GameState, elapsedMs: number): GameState {
     for (const unit of Object.values(draft.units)) {
       if (unit.health >= 100) continue;
       const province = draft.provinces[unit.provinceId];
-      if (province?.isCity && province.ownerId === unit.ownerId) {
-        unit.health = Math.min(100, unit.health + heal);
+      if (!province) continue;
+      const healPerDay = provinceHealPerDay(province, unit.ownerId);
+      if (healPerDay > 0) {
+        unit.health = Math.min(100, unit.health + healPerDay * dayFraction);
       }
     }
 

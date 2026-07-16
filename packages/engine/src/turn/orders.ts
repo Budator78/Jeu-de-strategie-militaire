@@ -1,6 +1,6 @@
 import { produce } from "immer";
 import type { BuildingId } from "../state/BuildingTypes";
-import { BUILDING_TYPES } from "../state/BuildingTypes";
+import { BUILDING_TYPES, canPlaceBuilding } from "../state/BuildingTypes";
 import type { GameState } from "../state/GameState";
 import { MAX_CONCURRENT_RESEARCH, RESEARCH_TYPES, type ResearchId } from "../state/ResearchTypes";
 import type { ResourceType } from "../state/ResourceTypes";
@@ -76,6 +76,8 @@ export function issueBuildOrder(
   if (province.homelandOf !== ownerId) return state; // occupied city — no mobilization
 
   const def = UNIT_TYPES[unitType];
+  // Air units need an Air Base in the city (see BuildingTypes.ts).
+  if (def.domain === "air" && !province.buildings.includes("airBase")) return state;
   if (!canAffordCost(country.resources, def.cost)) return state;
 
   return produce(state, (draft) => {
@@ -193,7 +195,7 @@ export function issueConstructOrder(
   const province = state.provinces[provinceId];
   const country = state.countries[ownerId];
   if (!province || !country) return state;
-  if (province.ownerId !== ownerId || !province.isCity) return state;
+  if (!canPlaceBuilding(province, ownerId, buildingId)) return state;
   if (province.buildings.includes(buildingId)) return state;
   const alreadyBuilding = state.pendingOrders.some(
     (o) => o.kind === "construct" && o.provinceId === provinceId && o.buildingId === buildingId,

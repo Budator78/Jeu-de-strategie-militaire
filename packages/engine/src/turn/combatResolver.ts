@@ -28,8 +28,17 @@ function mitigatedDamage(attackPower: number, defensePower: number): number {
  * game's need to mass forces before an assault. Reads attack/defense directly
  * from each Unit (baked in at build time, including any research bonus — see
  * ordersResolver.ts) rather than re-deriving from UNIT_TYPES.
+ *
+ * `defenseMultiplier` scales the defenders' effective defense — it carries
+ * the terrain/fortification bonus from the province's defensive buildings
+ * (Army Base, Bunkers, Combat Outpost — see ordersResolver.ts).
  */
-export function resolveCombat(attacker: Unit, defenders: Unit[], rngSeed: number): CombatOutcome {
+export function resolveCombat(
+  attacker: Unit,
+  defenders: Unit[],
+  rngSeed: number,
+  defenseMultiplier = 1,
+): CombatOutcome {
   const { value: v1, nextSeed: seed1 } = nextRandom(rngSeed);
   const { value: v2, nextSeed: seed2 } = nextRandom(seed1);
 
@@ -37,12 +46,16 @@ export function resolveCombat(attacker: Unit, defenders: Unit[], rngSeed: number
   const varianceDefense = VARIANCE_MIN + v2 * VARIANCE_SPREAD;
 
   const attackPower = attacker.attack * (attacker.health / 100) * varianceAttack;
-  const totalDefensePower = defenders.reduce((sum, d) => sum + d.defense * (d.health / 100), 0);
+  const totalDefensePower = defenders.reduce(
+    (sum, d) => sum + d.defense * defenseMultiplier * (d.health / 100),
+    0,
+  );
   const damageToDefenderPool = mitigatedDamage(attackPower, totalDefensePower);
 
   const survivingDefenders = defenders
     .map((d) => {
-      const share = totalDefensePower > 0 ? (d.defense * (d.health / 100)) / totalDefensePower : 1 / defenders.length;
+      const weighted = d.defense * defenseMultiplier * (d.health / 100);
+      const share = totalDefensePower > 0 ? weighted / totalDefensePower : 1 / defenders.length;
       const health = Math.max(0, d.health - damageToDefenderPool * share);
       return { ...d, health };
     })

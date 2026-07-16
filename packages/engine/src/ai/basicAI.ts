@@ -1,4 +1,4 @@
-import { BUILDING_TYPES, type BuildingId } from "../state/BuildingTypes";
+import { BUILDING_TYPES, canPlaceBuilding, type BuildingId } from "../state/BuildingTypes";
 import type { Country } from "../state/Country";
 import type { GameState } from "../state/GameState";
 import type { Province } from "../state/Province";
@@ -10,8 +10,16 @@ import type { AIAction, AIStrategy } from "./types";
 
 /** Infantry first (only infantry can capture territory), then armor, then air. */
 const BUILD_PREFERENCE: UnitTypeId[] = ["infantry", "tank", "fighter"];
-/** Arms Industry boosts every resource; build it before the narrower Recruiting Office. */
-const CONSTRUCT_PREFERENCE: BuildingId[] = ["armsIndustry", "recruitingOffice"];
+/**
+ * Construction priorities: annex freshly occupied cities (25%→50%), harden
+ * homeland cities, then boost production. Placement is checked per province.
+ */
+const CONSTRUCT_PREFERENCE: BuildingId[] = [
+  "annexCity",
+  "armyBase",
+  "armsIndustry",
+  "recruitingOffice",
+];
 const RESEARCH_PREFERENCE: ResearchId[] = ["infantryTier2", "tankTier2", "fighterTier2"];
 /** "Stays defensive, doesn't full send": only picks off lightly-held targets, never storms a real garrison. */
 const MAX_DEFENDERS_TO_ATTACK = 2;
@@ -88,7 +96,10 @@ export const basicAI: AIStrategy = {
 
       if (!hasPendingConstruction(state, province.id)) {
         const buildingId = CONSTRUCT_PREFERENCE.find(
-          (id) => !province.buildings.includes(id) && canAfford(country.resources, BUILDING_TYPES[id].cost),
+          (id) =>
+            !province.buildings.includes(id) &&
+            canPlaceBuilding(province, countryId, id) &&
+            canAfford(country.resources, BUILDING_TYPES[id].cost),
         );
         if (buildingId) {
           actions.push({ kind: "construct", provinceId: province.id, buildingId });

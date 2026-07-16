@@ -4,7 +4,7 @@ import type { GameState } from "../state/GameState";
 import type { Province } from "../state/Province";
 import type { ResourceType } from "../state/ResourceTypes";
 import { UNIT_TYPES } from "../state/UnitTypes";
-import { OCCUPIED_PRODUCTION_FACTOR } from "../rules/balance";
+import { ANNEXED_PRODUCTION_FACTOR, OCCUPIED_PRODUCTION_FACTOR } from "../rules/balance";
 
 const MS_PER_MINUTE = 60_000;
 
@@ -32,7 +32,15 @@ function buildingBonusMultiplier(province: Province, resource: ResourceType): nu
  * wiki's production table. Exported so the UI can show effective rates.
  */
 export function provinceYieldMultiplier(province: Province): number {
-  const statusFactor = province.ownerId === province.homelandOf ? 1 : OCCUPIED_PRODUCTION_FACTOR;
+  let statusFactor: number;
+  if (province.ownerId === province.homelandOf) {
+    statusFactor = 1;
+  } else {
+    // Occupied — an Annex City building lifts it from a quarter to a half.
+    statusFactor = province.buildings.includes("annexCity")
+      ? ANNEXED_PRODUCTION_FACTOR
+      : OCCUPIED_PRODUCTION_FACTOR;
+  }
   return (province.morale / 100) * statusFactor;
 }
 
