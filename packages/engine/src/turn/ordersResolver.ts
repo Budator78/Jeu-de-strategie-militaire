@@ -120,6 +120,25 @@ function logUnitDestroyed(draft: GameState, unit: Unit, byId: string): void {
   });
 }
 
+/** Once a hop lands, queue the next leg of the route (if any) — see orders.ts issueMovePathOrder. */
+function continuePath(draft: GameState, order: Extract<Order, { kind: "move" }>): void {
+  const remaining = order.remainingPath;
+  if (!remaining || remaining.length === 0) return;
+  const unit = draft.units[order.unitId];
+  if (!unit || unit.provinceId !== order.toProvinceId) return;
+
+  draft.pendingOrders.push({
+    kind: "move",
+    id: `${order.id}+`,
+    ownerId: order.ownerId,
+    unitId: order.unitId,
+    fromProvinceId: order.toProvinceId,
+    toProvinceId: remaining[0],
+    remainingPath: remaining.slice(1),
+    completesAt: draft.clockMs + UNIT_TYPES[unit.type].moveTimeMs,
+  });
+}
+
 function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }>): void {
   const unit = draft.units[order.unitId];
   if (!unit || unit.provinceId !== order.fromProvinceId) return; // unit gone or already relocated
@@ -129,6 +148,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
 
   if (destination.ownerId === unit.ownerId) {
     unit.provinceId = order.toProvinceId;
+    continuePath(draft, order);
     return;
   }
 
@@ -139,6 +159,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
     // no combat, no capture (see turn/diplomacy.ts).
     if (!atWar && owner?.stances[unit.ownerId] === "rightOfWay") {
       unit.provinceId = order.toProvinceId;
+      continuePath(draft, order);
       return;
     }
     declareWar(draft, unit.ownerId, destination.ownerId);
@@ -153,6 +174,7 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
     if (UNIT_TYPES[unit.type].canCapture) {
       captureProvince(draft, order.toProvinceId, unit.ownerId);
     }
+    continuePath(draft, order);
     return;
   }
 
@@ -181,6 +203,8 @@ function applyMoveOrder(draft: GameState, order: Extract<Order, { kind: "move" }
     if (UNIT_TYPES[unit.type].canCapture) {
       captureProvince(draft, order.toProvinceId, unit.ownerId);
     }
+    continuePath(draft, order);
   }
-  // else: attacker survived but defenders remain — bounced back, stays put.
+  // else: attacker survived but defenders remain — bounced back, the rest of
+  // the path is dropped (no new hop is queued).
 }

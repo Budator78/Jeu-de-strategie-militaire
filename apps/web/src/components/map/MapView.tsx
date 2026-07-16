@@ -64,6 +64,36 @@ interface TopoGeometry {
   id?: string | number
 }
 
+const centroidById = new Map<string, [number, number]>()
+for (const f of provinceFeatures) centroidById.set(f.id, pathGenerator.centroid(f as never))
+
+/** Shortest hop route between two provinces over the adjacency graph (BFS), excluding the start. */
+function findPath(fromId: string, toId: string): string[] | null {
+  if (fromId === toId) return []
+  const previous = new Map<string, string>()
+  const seen = new Set([fromId])
+  const queue = [fromId]
+  while (queue.length > 0) {
+    const current = queue.shift()!
+    for (const neighbor of adjacency[current] ?? []) {
+      if (seen.has(neighbor)) continue
+      seen.add(neighbor)
+      previous.set(neighbor, current)
+      if (neighbor === toId) {
+        const path = [toId]
+        let step = current
+        while (step !== fromId) {
+          path.unshift(step)
+          step = previous.get(step)!
+        }
+        return path
+      }
+      queue.push(neighbor)
+    }
+  }
+  return null
+}
+
 interface UnitStack {
   key: string
   provinceId: string
@@ -85,7 +115,9 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const countries = useGameStore((s) => s.state.countries)
   const units = useGameStore((s) => s.state.units)
   const pendingOrders = useGameStore((s) => s.state.pendingOrders)
-  const queueMove = useGameStore((s) => s.queueMove)
+  const queueMovePath = useGameStore((s) => s.queueMovePath)
+  const stopUnit = useGameStore((s) => s.stopUnit)
+  const fogOfWar = useGameStore((s) => s.fogOfWar)
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return
@@ -172,10 +204,53 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   }, [units])
 
   const selectedStack = selectedStackKey ? (unitStacks.find((s) => s.key === selectedStackKey) ?? null) : null
-  const validTargets = useMemo(
-    () => (selectedStack ? new Set(provinces[selectedStack.provinceId]?.neighbors ?? []) : null),
-    [selectedStack, provinces],
-  )
+
+  // Deselect the stack with Escape, like an RTS.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setSelectedStackKey(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  /**
+   * Fog of war (view-level): you see your own provinces, their neighbors,
+   * and anywhere your units stand (plus one province around them). null when
+   * the admin toggle disables fog — everything visible.
+   */
+  const visibleProvinces = useMemo(() => {
+    if (!fogOfWar) return null
+    const visible = new Set<string>()
+    const reveal = (id: string) => {
+      visible.add(id)
+      for (const neighbor of adjacency[id] ?? []) visible.add(neighbor)
+    }
+    for (const province of Object.values(provinces)) {
+      if (province.ownerId === HUMAN_COUNTRY_ID) reveal(province.id)
+    }
+    for (const unit of Object.values(units)) {
+      if (unit.ownerId === HUMAN_COUNTRY_ID) reveal(unit.provinceId)
+    }
+    return visible
+  }, [fogOfWar, provinces, units])
+
+  // Marching routes of your own units (current hop + queued waypoints),
+  // drawn as dashed arrows; identical stack routes are deduped.
+  const movePaths = useMemo(() => {
+    const routes = new Map<string, [number, number][]>()
+    for (const order of pendingOrders) {
+      if (order.kind !== 'move' || order.ownerId !== HUMAN_COUNTRY_ID) continue
+      const stops = [order.fromProvinceId, order.toProvinceId, ...(order.remainingPath ?? [])]
+      const key = stops.join('>')
+      if (routes.has(key)) continue
+      const points = stops
+        .map((id) => centroidById.get(id))
+        .filter((p): p is [number, number] => Boolean(p))
+      if (points.length >= 2) routes.set(key, points)
+    }
+    return [...routes.entries()]
+  }, [pendingOrders])
 
   // Bright white outline hugging the human country's full border (land + coast),
   // like the selected-nation glow in the source game.
@@ -217,13 +292,22 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   )
 
   function handleProvinceClick(provinceId: string) {
-    if (selectedStack && validTargets?.has(provinceId)) {
-      for (const unit of selectedStack.units) {
-        if (!movingUnitIds.has(unit.id)) queueMove(unit.id, provinceId)
+    if (selectedStack) {
+      // Clicking the stack's own province just deselects it.
+      if (provinceId === selectedStack.provinceId) {
+        setSelectedStackKey(null)
+        return
       }
-      setSelectedStackKey(null)
-      setSelectedId(provinceId)
-      return
+      // Click anywhere: BFS the route and march the whole stack there
+      // (re-ordering a marching unit redirects it).
+      const path = findPath(selectedStack.provinceId, provinceId)
+      if (path && path.length > 0) {
+        for (const unit of selectedStack.units) {
+          queueMovePath(unit.id, path)
+        }
+        setSelectedStackKey(null)
+        return
+      }
     }
     setSelectedStackKey(null)
     setSelectedId(provinceId)
@@ -249,7 +333,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         ref={svgRef}
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
-        className="map-svg"
+        className={`map-svg ${selectedStack ? 'targeting' : ''}`}
         role="img"
         aria-label="Carte du monde"
       >
@@ -259,7 +343,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
             const classes = ['province', ownerClass(provinceState?.ownerId ?? null)]
             if (provinceState?.isCity) classes.push('city')
             if (f.id === selectedId) classes.push('selected')
-            if (validTargets?.has(f.id)) classes.push('valid-target')
+            if (visibleProvinces && !visibleProvinces.has(f.id)) classes.push('fogged')
             return (
               <path
                 key={f.id}
@@ -274,6 +358,16 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
           {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
+          {movePaths.map(([key, points]) => (
+            <g key={key} className="move-path">
+              <polyline
+                points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+                strokeWidth={1.6 / zoomScale}
+                strokeDasharray={`${4 / zoomScale} ${3 / zoomScale}`}
+              />
+              <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} r={2.6 / zoomScale} />
+            </g>
+          ))}
           {cityLabels.map(({ feature, centroid }) => (
             <g key={feature.id} className="city-label" transform={`translate(${centroid[0]}, ${centroid[1]})`}>
               <circle r={2.2 / zoomScale} />
@@ -291,6 +385,14 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
             </g>
           ))}
           {unitStacks.map((stack) => {
+            // Fog of war: foreign stacks outside your sight range stay hidden.
+            if (
+              visibleProvinces &&
+              stack.ownerId !== HUMAN_COUNTRY_ID &&
+              !visibleProvinces.has(stack.provinceId)
+            ) {
+              return null
+            }
             const classes = ['unit-stack', ownerClass(stack.ownerId)]
             if (stack.key === selectedStackKey) classes.push('selected')
             const glyph = UNIT_GLYPH[stack.units[0].type] ?? '?'
@@ -338,7 +440,12 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
       </div>
 
       {selected && selectedState && selectedState.isCity && (
-        <CityPanel province={selectedState} onClose={() => setSelectedId(null)} onSelectProvince={setSelectedId} />
+        <CityPanel
+          province={selectedState}
+          fogged={Boolean(visibleProvinces && !visibleProvinces.has(selected.id))}
+          onClose={() => setSelectedId(null)}
+          onSelectProvince={setSelectedId}
+        />
       )}
 
       {selected && selectedState && !selectedState.isCity && (
@@ -357,21 +464,38 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               </li>
             ))}
           </ul>
-          {unitsInSelectedProvince.length > 0 && (
-            <ul className="unit-list">
-              {unitsInSelectedProvince.map((u) => (
-                <li key={u.id}>
-                  {UNIT_LABELS_FR[u.type]} ({u.ownerId}) — {Math.round(u.health)} pv
-                </li>
-              ))}
-            </ul>
+          {visibleProvinces && !visibleProvinces.has(selected.id) ? (
+            <p className="province-fog-note">Zone hors de portée de vos renseignements.</p>
+          ) : (
+            unitsInSelectedProvince.length > 0 && (
+              <ul className="unit-list">
+                {unitsInSelectedProvince.map((u) => (
+                  <li key={u.id}>
+                    {UNIT_LABELS_FR[u.type]} ({u.ownerId}) — {Math.round(u.health)} pv
+                  </li>
+                ))}
+              </ul>
+            )
           )}
         </div>
       )}
 
       {selectedStack && (
         <p className="move-hint move-hint-floating">
-          Pile de {selectedStack.units.length} sélectionnée — cliquez une province surlignée pour la déplacer.
+          Pile de {selectedStack.units.length} sélectionnée — cliquez une destination n'importe où sur la carte
+          (Échap pour annuler).
+          {selectedStack.units.some((u) => movingUnitIds.has(u.id)) && (
+            <button
+              type="button"
+              className="move-stop-btn"
+              onClick={() => {
+                for (const unit of selectedStack.units) stopUnit(unit.id)
+                setSelectedStackKey(null)
+              }}
+            >
+              ■ Stopper
+            </button>
+          )}
         </p>
       )}
     </div>

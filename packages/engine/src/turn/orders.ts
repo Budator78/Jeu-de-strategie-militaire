@@ -24,6 +24,13 @@ export type Order =
       fromProvinceId: string;
       toProvinceId: string;
       completesAt: number;
+      /**
+       * Waypoints still ahead after this hop. When the hop completes
+       * peacefully (or the destination is cleared), the resolver queues the
+       * next hop automatically — see ordersResolver.ts. A combat bounce or
+       * the unit's death drops the rest of the path.
+       */
+      remainingPath?: string[];
     }
   | {
       kind: "construct";
@@ -117,6 +124,55 @@ export function issueMoveOrder(
       unitId,
       fromProvinceId: unit.provinceId,
       toProvinceId,
+      completesAt: draft.clockMs + def.moveTimeMs,
+    });
+  });
+}
+
+/** Drops every pending move order of a unit. Its position never changed mid-hop, so this simply halts it in place. */
+export function cancelUnitMoves(state: GameState, ownerId: string, unitId: string): GameState {
+  const unit = state.units[unitId];
+  if (!unit || unit.ownerId !== ownerId) return state;
+  if (!state.pendingOrders.some((o) => o.kind === "move" && o.unitId === unitId)) return state;
+  return produce(state, (draft) => {
+    draft.pendingOrders = draft.pendingOrders.filter((o) => !(o.kind === "move" && o.unitId === unitId));
+  });
+}
+
+/**
+ * Orders a unit along a multi-province route (each step must be adjacent to
+ * the previous). Replaces any pending moves — re-ordering a marching unit
+ * redirects it. The resolver walks the route hop by hop; combat or death
+ * interrupts it.
+ */
+export function issueMovePathOrder(
+  state: GameState,
+  orderId: string,
+  ownerId: string,
+  unitId: string,
+  path: string[],
+): GameState {
+  const unit = state.units[unitId];
+  if (!unit || unit.ownerId !== ownerId || path.length === 0) return state;
+
+  let current = unit.provinceId;
+  for (const step of path) {
+    const province = state.provinces[current];
+    if (!province || !province.neighbors.includes(step)) return state;
+    current = step;
+  }
+
+  const def = UNIT_TYPES[unit.type];
+  return produce(state, (draft) => {
+    draft.pendingOrders = draft.pendingOrders.filter((o) => !(o.kind === "move" && o.unitId === unitId));
+    draft.pendingOrders.push({
+      kind: "move",
+      id: orderId,
+      ownerId,
+      unitId,
+      fromProvinceId: unit.provinceId,
+      toProvinceId: path[0],
+      remainingPath: path.slice(1),
       completesAt: draft.clockMs + def.moveTimeMs,
     });
   });

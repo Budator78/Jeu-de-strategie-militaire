@@ -7,6 +7,8 @@ export function SettingsDrawer({ onClose }: { onClose: () => void }) {
   const setPaused = useGameStore((s) => s.setPaused)
   const timeScale = useGameStore((s) => s.timeScale)
   const setTimeScale = useGameStore((s) => s.setTimeScale)
+  const fogOfWar = useGameStore((s) => s.fogOfWar)
+  const setFogOfWar = useGameStore((s) => s.setFogOfWar)
   const saveGame = useGameStore((s) => s.saveGame)
   const loadGame = useGameStore((s) => s.loadGame)
   const newGame = useGameStore((s) => s.newGame)
@@ -39,6 +41,14 @@ export function SettingsDrawer({ onClose }: { onClose: () => void }) {
             </button>
           ))}
         </span>
+      </div>
+      <div className="settings-row">
+        <label className="settings-toggle">
+          <input type="checkbox" checked={fogOfWar} onChange={(e) => setFogOfWar(e.target.checked)} />
+          <span>
+            Brouillard de guerre <em className="settings-admin-tag">(option admin)</em>
+          </span>
+        </label>
       </div>
       <div className="settings-row">
         <button type="button" onClick={saveGame}>

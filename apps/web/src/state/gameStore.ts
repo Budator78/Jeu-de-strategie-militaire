@@ -4,12 +4,14 @@ import {
   basicAI,
   boostMoraleWithGold,
   createGameState,
+  cancelUnitMoves,
   declareWarOn,
   executeMarketTrade,
   hasOfferedPeace,
   issueBuildOrder,
   issueConstructOrder,
   issueMoveOrder,
+  issueMovePathOrder,
   issueResearchOrder,
   offerPeace,
   retractPeaceOffer,
@@ -40,14 +42,19 @@ interface GameStore {
   state: GameState
   paused: boolean
   timeScale: number
+  /** View-level fog of war; the admin toggle in settings turns it off to reveal the whole map. */
+  fogOfWar: boolean
   nextOrderId: number
   ticksSinceAutosave: number
   hasSave: boolean
   tick: (elapsedMs: number) => void
   setPaused: (paused: boolean) => void
   setTimeScale: (timeScale: number) => void
+  setFogOfWar: (enabled: boolean) => void
   queueBuild: (provinceId: string, unitType: UnitTypeId) => void
   queueMove: (unitId: string, toProvinceId: string) => void
+  queueMovePath: (unitId: string, path: string[]) => void
+  stopUnit: (unitId: string) => void
   queueConstruct: (provinceId: string, buildingId: BuildingId) => void
   queueResearch: (researchId: ResearchId) => void
   trade: (offerId: string) => void
@@ -116,10 +123,21 @@ function writeSaveFile(save: SaveFile) {
 
 const initialSave = readSaveFile()
 
+const FOG_KEY = 'con-like-fog'
+
+function readFogSetting(): boolean {
+  try {
+    return (localStorage.getItem(FOG_KEY) ?? '1') === '1'
+  } catch {
+    return true
+  }
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   state: initialSave?.state ?? createGameState(buildScenario(HUMAN_COUNTRY_ID)),
   paused: false,
   timeScale: 1,
+  fogOfWar: readFogSetting(),
   nextOrderId: initialSave?.nextOrderId ?? 1,
   ticksSinceAutosave: 0,
   hasSave: initialSave !== null,
@@ -136,6 +154,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }),
   setPaused: (paused) => set({ paused }),
   setTimeScale: (timeScale) => set({ timeScale }),
+  setFogOfWar: (enabled) => {
+    try {
+      localStorage.setItem(FOG_KEY, enabled ? '1' : '0')
+    } catch {
+      // ignore
+    }
+    set({ fogOfWar: enabled })
+  },
   queueBuild: (provinceId, unitType) => {
     const orderId = `order-${get().nextOrderId}`
     set((s) => ({
@@ -149,6 +175,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       nextOrderId: s.nextOrderId + 1,
       state: issueMoveOrder(s.state, orderId, HUMAN_COUNTRY_ID, unitId, toProvinceId),
     }))
+  },
+  queueMovePath: (unitId, path) => {
+    const orderId = `order-${get().nextOrderId}`
+    set((s) => ({
+      nextOrderId: s.nextOrderId + 1,
+      state: issueMovePathOrder(s.state, orderId, HUMAN_COUNTRY_ID, unitId, path),
+    }))
+  },
+  stopUnit: (unitId) => {
+    set((s) => ({ state: cancelUnitMoves(s.state, HUMAN_COUNTRY_ID, unitId) }))
   },
   queueConstruct: (provinceId, buildingId) => {
     const orderId = `order-${get().nextOrderId}`

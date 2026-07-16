@@ -842,6 +842,25 @@
   margin: 0;
 }
 
+.settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.settings-toggle input {
+  accent-color: #4a7c59;
+  cursor: pointer;
+}
+
+.settings-admin-tag {
+  color: #e5b93c;
+  font-style: normal;
+  font-size: 0.68rem;
+}
+
 .speed-controls {
   display: flex;
   gap: 0.3rem;

@@ -50,10 +50,12 @@ function SmileyGlyph() {
 
 export function CityPanel({
   province,
+  fogged,
   onClose,
   onSelectProvince,
 }: {
   province: Province
+  fogged: boolean
   onClose: () => void
   onSelectProvince: (id: string) => void
 }) {
@@ -168,15 +170,21 @@ export function CityPanel({
             <span className="city-info-label">Bonus défensif</span>
             <span className="city-info-value">0.00%</span>
           </div>
-          {garrison.length > 0 && (
+          {fogged ? (
             <div className="city-garrison">
-              {garrison.slice(0, 4).map((u) => (
-                <div key={u.id} className="city-garrison-row">
-                  {UNIT_LABELS_FR[u.type]} — {Math.round(u.health)} pv
-                </div>
-              ))}
-              {garrison.length > 4 && <div className="city-garrison-row">… et {garrison.length - 4} de plus</div>}
+              <div className="city-garrison-row">Garnison inconnue — hors de portée de vos renseignements.</div>
             </div>
+          ) : (
+            garrison.length > 0 && (
+              <div className="city-garrison">
+                {garrison.slice(0, 4).map((u) => (
+                  <div key={u.id} className="city-garrison-row">
+                    {UNIT_LABELS_FR[u.type]} — {Math.round(u.health)} pv
+                  </div>
+                ))}
+                {garrison.length > 4 && <div className="city-garrison-row">… et {garrison.length - 4} de plus</div>}
+              </div>
+            )
           )}
         </div>
         <div className="city-block city-block-buildings">
