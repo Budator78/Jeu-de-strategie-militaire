@@ -119,23 +119,69 @@
   stroke-width: 0.4;
 }
 
-.city-label {
+/* City medallion — a big, distinct, clickable marker (its own object, apart
+   from the province land). Owner-tinted badge with a skyline glyph, a size
+   pip, and a name label. */
+.city-marker {
+  cursor: pointer;
+}
+
+.city-badge {
+  fill: #cfd8de;
+  stroke: #131b22;
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.6));
+}
+
+.city-marker.owner-human .city-badge {
+  fill: #d9e6f4;
+  stroke: #2f7fbf;
+  stroke-width: 1.4;
+}
+
+.city-marker.owner-enemy .city-badge {
+  fill: #efd3cd;
+  stroke: #c9524a;
+  stroke-width: 1.4;
+}
+
+.city-glyph rect {
+  fill: #26333d;
+}
+
+.city-size-bg {
+  fill: #1c2933;
+  stroke: #eef2f4;
+  stroke-width: 0.7;
+}
+
+.city-size {
+  fill: #fff;
+  font-size: 5.5px;
+  font-weight: 700;
+  font-family: sans-serif;
   pointer-events: none;
 }
 
-.city-label circle {
-  fill: #e8eef0;
-  stroke: #2b3540;
-  stroke-width: 0.4;
+.city-name {
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 8.5px;
+  fill: #eef2f4;
+  paint-order: stroke;
+  stroke: rgba(20, 28, 36, 0.85);
+  stroke-width: 2.2px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
-/* Small pale label with a soft dark halo, e.g. "Mexico City(6)". */
-.city-label text {
-  font-family: 'Segoe UI', sans-serif;
-  fill: #dfe7ea;
-  paint-order: stroke;
-  stroke: rgba(24, 32, 40, 0.75);
-  letter-spacing: 0.02em;
+.city-marker.selected .city-badge {
+  stroke: #fff;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+}
+
+.city-marker.fogged {
+  filter: brightness(0.6) saturate(0.4);
 }
 
 /* Unit stacks: dark chip with owner-color stripe and a count badge. */

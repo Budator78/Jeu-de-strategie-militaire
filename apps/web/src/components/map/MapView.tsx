@@ -24,14 +24,20 @@ const HEIGHT = 700
  * the source game's "Mexico City(6)" labels.
  */
 const CITY_LABEL_MIN_ZOOM = 2
-const CITY_LABEL_FONT_SCREEN_PX = 8.5
-const STACK_SPACING_SCREEN_PX = 24
+const STACK_SPACING_SCREEN_PX = 26
+
+// City medallion: a big, distinct, clickable marker (its own object, separate
+// from the province land around it). Sized in map units, held at constant
+// screen size via scale(1/zoomScale). Raised above the centroid so the troop
+// counters (which sit below it) never cover it.
+const CITY_R = 9
+const CITY_MARKER_RISE = 13
 
 // On-map troop counter footprint, in map units (kept at constant screen size
 // via scale(1/zoomScale)). Roughly the CoN 3:2 flag-counter proportion.
-const COUNTER_W = 30
-const COUNTER_H = 20
-const FLAG_W = 12
+const COUNTER_W = 36
+const COUNTER_H = 24
+const FLAG_W = 14
 
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
@@ -107,6 +113,9 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   const gRef = useRef<SVGGElement | null>(null)
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Whether the current selection is the city (medallion) or the province land
+  // — they're now two distinct, separately clickable things.
+  const [selectionMode, setSelectionMode] = useState<'city' | 'province'>('province')
   const [selectedStackKey, setSelectedStackKey] = useState<string | null>(null)
   const [provinceConstructOpen, setProvinceConstructOpen] = useState(false)
   const [zoomScale, setZoomScale] = useState(1)
@@ -354,8 +363,9 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           </path>
         )
       }),
+    // selectedStackKey so the click handler marches a selected stack, not stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [ownerSig, atWarSig, selectedId, visibleProvinces],
+    [ownerSig, atWarSig, selectedId, selectedStackKey, visibleProvinces],
   )
 
   function cycleStack(delta: number) {
@@ -430,12 +440,53 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerSig, atWarSig])
 
-  const cityLabels = useMemo(
+  // Cities are their own distinct, clickable objects — a big medallion raised
+  // above the province centroid (so troop counters below never cover it),
+  // separate from the province land around them.
+  const cityMarkers = useMemo(
     () =>
       provinceFeatures
         .filter((f) => provinces[f.id]?.isCity)
-        .map((f) => ({ feature: f, centroid: pathGenerator.centroid(f as never) })),
-    [provinces],
+        .map((f) => {
+          const centroid = centroidById.get(f.id)
+          if (!centroid) return null
+          const owner = provinces[f.id]?.ownerId ?? null
+          const classes = ['city-marker', ownerClass(owner)]
+          if (f.id === selectedId && selectionMode === 'city') classes.push('selected')
+          if (visibleProvinces && !visibleProvinces.has(f.id)) classes.push('fogged')
+          const size = CITY_SIZE[f.id]
+          return (
+            <g
+              key={f.id}
+              className={classes.join(' ')}
+              transform={`translate(${centroid[0]}, ${centroid[1]}) scale(${1 / zoomScale}) translate(0, ${-CITY_MARKER_RISE})`}
+              onClick={(event) => handleCityClick(f.id, event)}
+            >
+              <circle className="city-badge" r={CITY_R} />
+              {/* Original tiny skyline glyph. */}
+              <g className="city-glyph">
+                <rect x={-5} y={-1} width={2.6} height={5} />
+                <rect x={-1.6} y={-4} width={2.6} height={8} />
+                <rect x={2} y={-2.5} width={2.6} height={6.5} />
+              </g>
+              {size !== undefined && (
+                <>
+                  <circle className="city-size-bg" cx={CITY_R - 1} cy={-CITY_R + 1} r={4} />
+                  <text className="city-size" x={CITY_R - 1} y={-CITY_R + 3} textAnchor="middle">
+                    {size}
+                  </text>
+                </>
+              )}
+              {zoomScale >= CITY_LABEL_MIN_ZOOM && (
+                <text className="city-name" y={CITY_R + 8} textAnchor="middle">
+                  {f.properties.name_en}
+                </text>
+              )}
+            </g>
+          )
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ownerSig, atWarSig, selectedId, selectionMode, selectedStackKey, visibleProvinces, zoomScale],
   )
 
   function handleProvinceClick(provinceId: string) {
@@ -458,13 +509,53 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     }
     setSelectedStackKey(null)
     setSelectedId(provinceId)
+    setSelectionMode('province')
+    setProvinceConstructOpen(false)
+  }
+
+  // The city medallion is its own object: clicking it opens the city, not the
+  // province land underneath. It still accepts move orders when a stack is up.
+  function handleCityClick(provinceId: string, event: React.MouseEvent) {
+    event.stopPropagation()
+    if (selectedStack) {
+      if (provinceId === selectedStack.provinceId) {
+        setSelectedStackKey(null)
+        return
+      }
+      const path = findPath(selectedStack.provinceId, provinceId)
+      if (path && path.length > 0) {
+        for (const unit of selectedStack.units) queueMovePath(unit.id, path)
+        setSelectedStackKey(null)
+        return
+      }
+    }
+    setSelectedStackKey(null)
+    setSelectedId(provinceId)
+    setSelectionMode('city')
     setProvinceConstructOpen(false)
   }
 
   function handleStackClick(stack: UnitStack, event: React.MouseEvent) {
     event.stopPropagation()
-    setSelectedId(stack.provinceId)
-    setSelectedStackKey(stack.ownerId === HUMAN_COUNTRY_ID ? stack.key : null)
+    // With a stack already selected, clicking elsewhere marches it there.
+    if (selectedStack && stack.provinceId !== selectedStack.provinceId) {
+      const path = findPath(selectedStack.provinceId, stack.provinceId)
+      if (path && path.length > 0) {
+        for (const unit of selectedStack.units) queueMovePath(unit.id, path)
+        setSelectedStackKey(null)
+        return
+      }
+    }
+    if (stack.ownerId === HUMAN_COUNTRY_ID) {
+      // Select ONLY the troop — don't open the province/city panel behind it.
+      setSelectedStackKey(stack.key)
+      setSelectedId(null)
+    } else {
+      // Can't command an enemy stack; fall back to inspecting its province.
+      setSelectedStackKey(null)
+      setSelectedId(stack.provinceId)
+      setSelectionMode('province')
+    }
   }
 
   function ownerClass(ownerId: string | null): string {
@@ -531,22 +622,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} r={2.6 / zoomScale} />
             </g>
           ))}
-          {cityLabels.map(({ feature, centroid }) => (
-            <g key={feature.id} className="city-label" transform={`translate(${centroid[0]}, ${centroid[1]})`}>
-              <circle r={2.2 / zoomScale} />
-              {zoomScale >= CITY_LABEL_MIN_ZOOM && (
-                <text
-                  y={-4 / zoomScale}
-                  textAnchor="middle"
-                  fontSize={CITY_LABEL_FONT_SCREEN_PX / zoomScale}
-                  strokeWidth={2.2 / zoomScale}
-                >
-                  {feature.properties.name_en}
-                  {CITY_SIZE[feature.id] !== undefined ? `(${CITY_SIZE[feature.id]})` : ''}
-                </text>
-              )}
-            </g>
-          ))}
+          {cityMarkers}
           {troopCounters}
         </g>
       </svg>
@@ -572,16 +648,19 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </button>
       </div>
 
-      {selected && selectedState && selectedState.isCity && (
+      {selected && selectedState && selectedState.isCity && selectionMode === 'city' && (
         <CityPanel
           province={selectedState}
           fogged={Boolean(visibleProvinces && !visibleProvinces.has(selected.id))}
           onClose={() => setSelectedId(null)}
-          onSelectProvince={setSelectedId}
+          onSelectProvince={(id) => {
+            setSelectedId(id)
+            setSelectionMode('city')
+          }}
         />
       )}
 
-      {selected && selectedState && !selectedState.isCity && (
+      {selected && selectedState && selectionMode === 'province' && (
         <div className="province-panel">
           <div className="province-panel-header">
             <h2>{selected.properties.name_en}</h2>
@@ -615,12 +694,15 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               </ul>
             )
           )}
-          {selectedState.ownerId === HUMAN_COUNTRY_ID && (
+          {selectedState.ownerId === HUMAN_COUNTRY_ID && !selectedState.isCity && (
             <div className="production-buttons">
               <button type="button" onClick={() => setProvinceConstructOpen(true)}>
                 Construire un bâtiment
               </button>
             </div>
+          )}
+          {selectedState.isCity && (
+            <p className="province-kind">Cliquez le médaillon de la ville pour la gérer.</p>
           )}
         </div>
       )}
