@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { geoNaturalEarth1, geoPath } from 'd3-geo'
+import { geoCentroid, geoEquirectangular, geoPath } from 'd3-geo'
 import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
@@ -25,7 +25,12 @@ const HEIGHT = 700
  * in, counter-scaled so it always reads at a small constant screen size like
  * the source game's "Mexico City(6)" labels.
  */
-const CITY_LABEL_MIN_ZOOM = 2
+// Cylindrical satellite map. Zoom is constrained so the most zoomed-out view is
+// continent-scale (a continent fills the screen), not the whole world.
+const MIN_ZOOM = 6
+const MAX_ZOOM = 140
+// Past this zoom, country names hand off to city names.
+const CITY_LABEL_MIN_ZOOM = 16
 const STACK_SPACING_SCREEN_PX = 26
 
 // City medallion: a big, distinct, clickable marker (its own object, separate
@@ -43,7 +48,7 @@ const BADGE_W = 17
 const BADGE_H = 11
 const BADGE_FLAG_W = 10
 
-const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
+const projection = geoEquirectangular().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
 
 // Faint triangulated "logistics network" connecting neighboring province
@@ -141,17 +146,34 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     const svgSelection = select(svgRef.current)
     const gSelection = select(gRef.current)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([1, 40])
+      .scaleExtent([MIN_ZOOM, MAX_ZOOM])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         gSelection.attr('transform', event.transform.toString())
         setZoomScale(event.transform.k)
       })
     zoomBehaviorRef.current = zoomBehavior
     svgSelection.call(zoomBehavior)
+    // Start at max zoom-out (continent scale), centered on the human nation.
+    svgSelection.call(zoomBehavior.transform, humanHomeTransform())
     return () => {
       svgSelection.on('.zoom', null)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // The reset/home view: max zoom-out (continent scale) centered on the human
+  // nation, so "dézoom à fond" frames your continent rather than the globe.
+  function humanHomeTransform() {
+    const humanFeatures = provinceFeatures.filter((f) => provinces[f.id]?.ownerId === HUMAN_COUNTRY_ID)
+    const center = (
+      humanFeatures.length
+        ? geoCentroid({ type: 'FeatureCollection', features: humanFeatures } as never)
+        : geoCentroid(featureCollection as never)
+    ) as [number, number]
+    const p = projection(center) ?? [WIDTH / 2, HEIGHT / 2]
+    const k = MIN_ZOOM
+    return zoomIdentity.translate(WIDTH / 2 - p[0] * k, HEIGHT / 2 - p[1] * k).scale(k)
+  }
 
   function zoomBy(factor: number) {
     if (!svgRef.current || !zoomBehaviorRef.current) return
@@ -160,7 +182,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
 
   function resetZoom() {
     if (!svgRef.current || !zoomBehaviorRef.current) return
-    zoomBehaviorRef.current.transform(select(svgRef.current), zoomIdentity)
+    zoomBehaviorRef.current.transform(select(svgRef.current), humanHomeTransform())
   }
 
   function toggleFullscreen() {
