@@ -532,7 +532,9 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         owner,
         name: (countries[owner]?.name ?? owner).toUpperCase(),
         anchor: v.anchor,
-        fontSize: Math.max(9, Math.min(42, Math.sqrt(v.area) * 0.85)),
+        // A constant screen size (applied as /zoomScale at render), gently
+        // scaled by area and clamped so big countries don't dwarf the map.
+        baseFont: Math.max(11, Math.min(21, Math.sqrt(v.area) * 1.3)),
       }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerSig])
@@ -660,19 +662,22 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
           {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
-          {countryLabels.map((label) => (
-            <text
-              key={label.owner}
-              className="country-label"
-              x={label.anchor[0]}
-              y={label.anchor[1]}
-              textAnchor="middle"
-              fontSize={label.fontSize}
-              strokeWidth={label.fontSize * 0.14}
-            >
-              {label.name}
-            </text>
-          ))}
+          {/* Country names only while zoomed out; they hand off to city names
+              at the same threshold so the map never shows both at once. */}
+          {zoomScale < CITY_LABEL_MIN_ZOOM &&
+            countryLabels.map((label) => (
+              <text
+                key={label.owner}
+                className="country-label"
+                x={label.anchor[0]}
+                y={label.anchor[1]}
+                textAnchor="middle"
+                fontSize={label.baseFont / zoomScale}
+                strokeWidth={(label.baseFont * 0.14) / zoomScale}
+              >
+                {label.name}
+              </text>
+            ))}
           {movePaths.map(([key, points]) => (
             <MoveArrow key={key} points={points} zoomScale={zoomScale} />
           ))}
