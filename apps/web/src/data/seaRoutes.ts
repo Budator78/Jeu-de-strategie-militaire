@@ -14,9 +14,11 @@ import type { ProvinceFeature } from './geoData'
  */
 
 const EARTH_KM = 6371
-const SEA_CROSSING_KM = 520 // short straits/channels between coastal provinces
-const SEA_CROSSING_MAX = 3 // sea links added per province in the main pass
-const ISLAND_LIFELINE_KM = 1700 // reach for connecting an otherwise-cut-off island
+const SEA_CROSSING_KM = 1250 // straits, seas and near coasts — the dense web
+const SEA_CROSSING_MAX = 9 // sea links added per province in the main pass
+const LONG_LANE_KM = 3000 // longer open-sea shipping lanes
+const LONG_LANE_MAX = 3 // a few long lanes per province
+const ISLAND_LIFELINE_KM = 2600 // reach for connecting an otherwise-cut-off island
 
 export interface SeaRouteResult {
   adjacency: Record<string, string[]>
@@ -45,9 +47,8 @@ export function buildSeaRoutes(
 
   const kmBetween = (i: number, j: number) => geoDistance(centroids[i], centroids[j]) * EARTH_KM
 
-  // Main pass: each province links to its few nearest non-neighbors within a
-  // short crossing distance (Channel/Baltic/strait-scale), so coasts and small
-  // archipelagos connect without transoceanic hops.
+  // Main pass: each province links to its nearest non-neighbors within a
+  // crossing distance (seas and near coasts), building a dense route web.
   for (let i = 0; i < features.length; i++) {
     const near: Array<[number, number]> = []
     for (let j = 0; j < features.length; j++) {
@@ -57,6 +58,19 @@ export function buildSeaRoutes(
     }
     near.sort((a, b) => a[0] - b[0])
     for (const [, j] of near.slice(0, SEA_CROSSING_MAX)) link(i, j)
+  }
+
+  // Long-lane pass: a few longer open-sea shipping lanes per province, so the
+  // network reaches across bigger seas (not just hugging the coast).
+  for (let i = 0; i < features.length; i++) {
+    const near: Array<[number, number]> = []
+    for (let j = 0; j < features.length; j++) {
+      if (i === j || adj.get(ids[i])!.has(ids[j])) continue
+      const km = kmBetween(i, j)
+      if (km <= LONG_LANE_KM) near.push([km, j])
+    }
+    near.sort((a, b) => a[0] - b[0])
+    for (const [, j] of near.slice(0, LONG_LANE_MAX)) link(i, j)
   }
 
   // Lifeline pass: any province still cut off gets tied to its single nearest

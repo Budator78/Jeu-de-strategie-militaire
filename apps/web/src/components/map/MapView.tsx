@@ -68,6 +68,13 @@ const projection = USE_MERCATOR
   : geoEquirectangular().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
 
+// Full-world width in projected px — the map is tiled at ±this so it wraps
+// horizontally (pan east past the dateline and the Americas come round).
+const WORLD_LEFT = projection([-180, 0])![0]
+const WORLD_RIGHT = projection([180, 0])![0]
+const WORLD_W = WORLD_RIGHT - WORLD_LEFT
+const WORLD_OFFSETS = [-WORLD_W, 0, WORLD_W]
+
 // The route network troops travel: every province adjacency drawn as a thin
 // line between centroids — land borders solid, sea crossings dashed — like the
 // logistics web in the source game.
@@ -168,10 +175,11 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     const gSelection = select(gRef.current)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([MIN_ZOOM, MAX_ZOOM])
-      // Keep panning inside the map so you never drift off into empty ocean.
+      // Pan freely across the three tiled world copies (so it wraps), but stop
+      // at the outer copies' edges and never above/below the map into the void.
       .translateExtent([
-        [0, 0],
-        [WIDTH, HEIGHT],
+        [WORLD_LEFT - WORLD_W, 0],
+        [WORLD_RIGHT + WORLD_W, HEIGHT],
       ])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         gSelection.attr('transform', event.transform.toString())
@@ -706,38 +714,44 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           </linearGradient>
         </defs>
         <g ref={gRef}>
-          {provinceLayer}
-          <path d={routeNetwork.land} className="route-land" strokeWidth={0.6 / zoomScale} />
-          <path
-            d={routeNetwork.sea}
-            className="route-sea"
-            strokeWidth={0.7 / zoomScale}
-            strokeDasharray={`${2.5 / zoomScale} ${2 / zoomScale}`}
-          />
-          {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
-          {frontLinePath && <path d={frontLinePath} className="front-line" />}
-          {/* Country names only while zoomed out; they hand off to city names
-              at the same threshold so the map never shows both at once. */}
-          {zoomScale < CITY_LABEL_MIN_ZOOM &&
-            countryLabels.map((label) => (
-              <text
-                key={label.owner}
-                className="country-label"
-                x={label.anchor[0]}
-                y={label.anchor[1]}
-                textAnchor="middle"
-                fontSize={label.baseFont / zoomScale}
-                strokeWidth={(label.baseFont * 0.14) / zoomScale}
-              >
-                {label.name}
-              </text>
-            ))}
-          {movePaths.map(([key, points]) => (
-            <MoveArrow key={key} points={points} zoomScale={zoomScale} />
+          {/* The world is tiled three times side by side so it wraps: pan east
+              off the dateline and the next copy (the Americas) rolls in. */}
+          {WORLD_OFFSETS.map((dx) => (
+            <g key={dx} transform={`translate(${dx}, 0)`}>
+              {provinceLayer}
+              <path d={routeNetwork.land} className="route-land" strokeWidth={0.6 / zoomScale} />
+              <path
+                d={routeNetwork.sea}
+                className="route-sea"
+                strokeWidth={0.7 / zoomScale}
+                strokeDasharray={`${2.5 / zoomScale} ${2 / zoomScale}`}
+              />
+              {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
+              {frontLinePath && <path d={frontLinePath} className="front-line" />}
+              {/* Country names only while zoomed out; they hand off to city
+                  names at the same threshold so both never show at once. */}
+              {zoomScale < CITY_LABEL_MIN_ZOOM &&
+                countryLabels.map((label) => (
+                  <text
+                    key={label.owner}
+                    className="country-label"
+                    x={label.anchor[0]}
+                    y={label.anchor[1]}
+                    textAnchor="middle"
+                    fontSize={label.baseFont / zoomScale}
+                    strokeWidth={(label.baseFont * 0.14) / zoomScale}
+                  >
+                    {label.name}
+                  </text>
+                ))}
+              {movePaths.map(([key, points]) => (
+                <MoveArrow key={key} points={points} zoomScale={zoomScale} />
+              ))}
+              {previewPoints && <MoveArrow points={previewPoints} zoomScale={zoomScale} variant="preview" />}
+              {cityMarkers}
+              {troopCounters}
+            </g>
           ))}
-          {previewPoints && <MoveArrow points={previewPoints} zoomScale={zoomScale} variant="preview" />}
-          {cityMarkers}
-          {troopCounters}
         </g>
       </svg>
 
