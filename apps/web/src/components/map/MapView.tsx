@@ -36,8 +36,8 @@ const CITY_MARKER_RISE = 13
 
 // On-map unit "model" + attached flag badge (CoN style), in map units, kept at
 // constant screen size via scale(1/zoomScale).
-const MODEL_W = 42
-const MODEL_H = 24
+const MODEL_W = 50
+const MODEL_H = 31
 const BADGE_W = 17
 const BADGE_H = 11
 const BADGE_FLAG_W = 10
@@ -296,7 +296,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               y={-MODEL_H / 2}
               width={MODEL_W}
               height={MODEL_H}
-              viewBox="3 5 38 22"
+              viewBox="6 6 39 24"
               overflow="visible"
             >
               <UnitModel type={lead.type} />
