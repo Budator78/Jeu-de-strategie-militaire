@@ -184,37 +184,35 @@
   filter: brightness(0.6) saturate(0.4);
 }
 
-/* Unit stacks: dark chip with owner-color stripe and a count badge. */
+/* Troops: a colored 2D unit model on the ground with a small flag+count badge
+   pinned to its corner (CoN style). */
 .unit-stack {
   cursor: pointer;
 }
 
-/* CoN-style troop counter (pure SVG so hundreds composite cheaply): a light
-   card with the stack's lead-unit silhouette on the left and the owner's real
-   national flag on the right, plus a count badge for multi-unit stacks. */
-.counter-bg {
-  fill: #eef2f4;
-  stroke: #1a2530;
-  stroke-width: 0.8;
+.unit-shadow {
+  fill: rgba(0, 0, 0, 0.32);
 }
 
-.counter-sprite {
-  color: #26333d;
+/* Selection halo on the ground beneath the model. */
+.unit-select-ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.9));
+}
+
+.unit-model {
   overflow: visible;
 }
 
-.counter-divider {
-  stroke: #1a2530;
-  stroke-width: 0.6;
-}
-
-.counter-count-bg {
-  fill: #1c2933;
+.badge-bg {
+  fill: #1b2731;
   stroke: #eef2f4;
   stroke-width: 0.7;
 }
 
-.counter-count {
+.badge-count {
   fill: #fff;
   font-size: 7px;
   font-weight: 700;
@@ -222,21 +220,20 @@
   pointer-events: none;
 }
 
-/* Owner-tinted frame so allegiance reads at a glance. */
-.unit-stack.owner-human .counter-bg {
-  stroke: #2f7fbf;
-  stroke-width: 1.1;
+/* Owner-tinted badge frame so allegiance reads even before the flag registers. */
+.unit-stack.owner-human .badge-bg {
+  stroke: #57a5e0;
+  stroke-width: 1;
 }
 
-.unit-stack.owner-enemy .counter-bg {
-  stroke: #c9524a;
-  stroke-width: 1.1;
+.unit-stack.owner-enemy .badge-bg {
+  stroke: #e0685c;
+  stroke-width: 1;
 }
 
-.unit-stack.selected .counter-bg {
+.unit-stack.selected .badge-bg {
   stroke: #fff;
-  stroke-width: 1.4;
-  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
+  stroke-width: 1.2;
 }
 
 /* Bottom-right button column (fullscreen, zoom, reset, layers, settings). */

@@ -11,9 +11,10 @@ import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i1
 import { countryColor } from '../../utils/countryColor'
 import { flagUrlFor } from '../../utils/flagUrls'
 import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
-import { HudIcon, UnitIcon } from '../hud/icons'
+import { HudIcon } from '../hud/icons'
 import { ArmyPanel } from './ArmyPanel'
 import { CityPanel } from './CityPanel'
+import { UnitModel } from './UnitModel'
 import './MapView.css'
 
 const WIDTH = 900
@@ -33,11 +34,13 @@ const STACK_SPACING_SCREEN_PX = 26
 const CITY_R = 9
 const CITY_MARKER_RISE = 13
 
-// On-map troop counter footprint, in map units (kept at constant screen size
-// via scale(1/zoomScale)). Roughly the CoN 3:2 flag-counter proportion.
-const COUNTER_W = 36
-const COUNTER_H = 24
-const FLAG_W = 14
+// On-map unit "model" + attached flag badge (CoN style), in map units, kept at
+// constant screen size via scale(1/zoomScale).
+const MODEL_W = 42
+const MODEL_H = 24
+const BADGE_W = 17
+const BADGE_H = 11
+const BADGE_FLAG_W = 10
 
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
@@ -269,71 +272,60 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         }
         const classes = ['unit-stack', ownerClass(stack.ownerId)]
         if (stack.key === selectedStackKey) classes.push('selected')
-        // The counter shows the stack's strongest unit as its silhouette —
-        // that's the "lead" the player reads at a glance.
+        // The model shows the stack's strongest unit — the "lead" you read at
+        // a glance — with a small flag+count badge attached at the corner.
         const lead = stack.units.reduce((best, u) => (u.attack > best.attack ? u : best), stack.units[0])
         const flagUrl = flagUrlFor(stack.ownerId)
-        const flagX = COUNTER_W / 2 - FLAG_W
+        const badgeCx = MODEL_W / 2 - 3
+        const badgeCy = MODEL_H / 2 - 1
         return (
           <g
             key={stack.key}
             className={classes.join(' ')}
-            transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, ${COUNTER_H / 2 + 4})`}
+            transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, 9)`}
             onClick={(event) => handleStackClick(stack, event)}
           >
-            <rect
-              className="counter-bg"
-              x={-COUNTER_W / 2}
-              y={-COUNTER_H / 2}
-              width={COUNTER_W}
-              height={COUNTER_H}
-              rx={2}
-            />
-            {/* Unit silhouette (nested viewport re-maps the 0..32 sprite). */}
+            <ellipse className="unit-shadow" cx={0} cy={MODEL_H / 2 - 3.5} rx={MODEL_W * 0.34} ry={3.2} />
+            {stack.key === selectedStackKey && (
+              <ellipse className="unit-select-ring" cx={0} cy={MODEL_H / 2 - 3.5} rx={MODEL_W * 0.42} ry={4.4} />
+            )}
+            {/* Colored 2D unit model (nested viewport re-maps its 0..44 art). */}
             <svg
-              className="counter-sprite"
-              x={-COUNTER_W / 2 + 1}
-              y={-COUNTER_H / 2 + 1}
-              width={COUNTER_W - FLAG_W - 2}
-              height={COUNTER_H - 2}
-              viewBox="0 0 32 32"
+              className="unit-model"
+              x={-MODEL_W / 2}
+              y={-MODEL_H / 2}
+              width={MODEL_W}
+              height={MODEL_H}
+              viewBox="3 5 38 22"
+              overflow="visible"
             >
-              <UnitIcon type={lead.type} />
+              <UnitModel type={lead.type} />
             </svg>
-            {/* Real national flag, or the country's political color. */}
-            {flagUrl ? (
-              <image
-                href={flagUrl}
-                x={flagX}
-                y={-COUNTER_H / 2 + 1}
-                width={FLAG_W - 1}
-                height={COUNTER_H - 2}
-                preserveAspectRatio="xMidYMid slice"
-              />
-            ) : (
-              <rect
-                x={flagX}
-                y={-COUNTER_H / 2 + 1}
-                width={FLAG_W - 1}
-                height={COUNTER_H - 2}
-                fill={countryColor(stack.ownerId)}
-              />
-            )}
-            <line
-              className="counter-divider"
-              x1={flagX}
-              y1={-COUNTER_H / 2 + 1}
-              x2={flagX}
-              y2={COUNTER_H / 2 - 1}
-            />
-            {stack.units.length > 1 && (
-              <>
-                <circle className="counter-count-bg" cx={COUNTER_W / 2 - 2} cy={COUNTER_H / 2 - 2} r={5} />
-                <text className="counter-count" x={COUNTER_W / 2 - 2} y={COUNTER_H / 2 - 0.2} textAnchor="middle">
-                  {stack.units.length}
-                </text>
-              </>
-            )}
+            {/* Flag + count badge, pinned to the model's lower-right corner. */}
+            <g transform={`translate(${badgeCx}, ${badgeCy})`}>
+              <rect className="badge-bg" x={-BADGE_W / 2} y={-BADGE_H / 2} width={BADGE_W} height={BADGE_H} rx={1.6} />
+              {flagUrl ? (
+                <image
+                  href={flagUrl}
+                  x={-BADGE_W / 2 + 0.8}
+                  y={-BADGE_H / 2 + 0.8}
+                  width={BADGE_FLAG_W}
+                  height={BADGE_H - 1.6}
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              ) : (
+                <rect
+                  x={-BADGE_W / 2 + 0.8}
+                  y={-BADGE_H / 2 + 0.8}
+                  width={BADGE_FLAG_W}
+                  height={BADGE_H - 1.6}
+                  fill={countryColor(stack.ownerId)}
+                />
+              )}
+              <text className="badge-count" x={BADGE_W / 2 - 3.3} y={1.8} textAnchor="middle">
+                {stack.units.length}
+              </text>
+            </g>
           </g>
         )
       }),
