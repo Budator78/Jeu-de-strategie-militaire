@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { geoCentroid, geoEquirectangular, geoPath } from 'd3-geo'
+import { geoCentroid, geoEquirectangular, geoMercator, geoPath } from 'd3-geo'
 import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
 import { computeVisibleProvinces, type Unit } from '@con/engine'
-import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
+import { adjacency, featureCollection, provinceFeatures, seaPairs, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
@@ -48,29 +48,50 @@ const BADGE_W = 17
 const BADGE_H = 11
 const BADGE_FLAG_W = 10
 
-const projection = geoEquirectangular().fitSize([WIDTH, HEIGHT], featureCollection as never)
+// Cylindrical projection. Mercator is on trial (the classic satellite look);
+// flip to false for the pole-safe equirectangular. Mercator can't render the
+// poles, so it's fitted to the non-polar world and clipped to the frame.
+const USE_MERCATOR = true
+const projection = USE_MERCATOR
+  ? geoMercator()
+      .fitSize(
+        [WIDTH, HEIGHT],
+        {
+          type: 'FeatureCollection',
+          features: provinceFeatures.filter((f) => (geoCentroid(f as never)[1] ?? 0) > -55),
+        } as never,
+      )
+      .clipExtent([
+        [0, 0],
+        [WIDTH, HEIGHT],
+      ])
+  : geoEquirectangular().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
 
-// Faint triangulated "logistics network" connecting neighboring province
-// centroids, like the mesh overlay in the source game's map.
-const meshLinesPath = (() => {
+// The route network troops travel: every province adjacency drawn as a thin
+// line between centroids — land borders solid, sea crossings dashed — like the
+// logistics web in the source game.
+const routeNetwork = (() => {
   const centroids = new Map<string, [number, number]>()
   for (const f of provinceFeatures) centroids.set(f.id, pathGenerator.centroid(f as never))
   const seen = new Set<string>()
-  let d = ''
+  let land = ''
+  let sea = ''
   for (const [id, neighbors] of Object.entries(adjacency)) {
     const c1 = centroids.get(id)
-    if (!c1) continue
+    if (!c1 || !Number.isFinite(c1[0])) continue
     for (const neighborId of neighbors) {
       const key = id < neighborId ? `${id}|${neighborId}` : `${neighborId}|${id}`
       if (seen.has(key)) continue
       seen.add(key)
       const c2 = centroids.get(neighborId)
-      if (!c2) continue
-      d += `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
+      if (!c2 || !Number.isFinite(c2[0])) continue
+      const seg = `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
+      if (seaPairs.has(key)) sea += seg
+      else land += seg
     }
   }
-  return d
+  return { land, sea }
 })()
 
 interface TopoGeometry {
@@ -147,6 +168,11 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     const gSelection = select(gRef.current)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([MIN_ZOOM, MAX_ZOOM])
+      // Keep panning inside the map so you never drift off into empty ocean.
+      .translateExtent([
+        [0, 0],
+        [WIDTH, HEIGHT],
+      ])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         gSelection.attr('transform', event.transform.toString())
         setZoomScale(event.transform.k)
@@ -681,7 +707,13 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </defs>
         <g ref={gRef}>
           {provinceLayer}
-          <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
+          <path d={routeNetwork.land} className="route-land" strokeWidth={0.6 / zoomScale} />
+          <path
+            d={routeNetwork.sea}
+            className="route-sea"
+            strokeWidth={0.7 / zoomScale}
+            strokeDasharray={`${2.5 / zoomScale} ${2 / zoomScale}`}
+          />
           {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
           {/* Country names only while zoomed out; they hand off to city names

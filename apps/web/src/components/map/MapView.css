@@ -75,10 +75,19 @@
   cursor: crosshair;
 }
 
-/* Faint triangulated logistics mesh between neighboring provinces. */
-.mesh-lines {
+/* The route network troops travel: land borders (solid) and sea crossings
+   (dashed lanes over the water). */
+.route-land {
   fill: none;
-  stroke: rgba(235, 242, 246, 0.14);
+  stroke: rgba(226, 236, 242, 0.22);
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.route-sea {
+  fill: none;
+  stroke: rgba(150, 205, 230, 0.4);
+  stroke-linecap: round;
   pointer-events: none;
 }
 
