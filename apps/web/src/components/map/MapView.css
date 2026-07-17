@@ -101,22 +101,59 @@
 }
 
 /* Marching orders of your units: dashed golden route with a destination dot. */
-.move-path {
+/* Big territorial name labels (SCOTLAND, IRELAND…) — bold white with a dark
+   halo, scaled with the terrain. */
+.country-label {
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: 800;
+  fill: #f3f6f8;
+  paint-order: stroke;
+  stroke: rgba(18, 24, 30, 0.72);
+  letter-spacing: 0.06em;
+  opacity: 0.88;
   pointer-events: none;
 }
 
-.move-path polyline {
-  fill: none;
-  stroke: #ffd75e;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0.85;
+/* Fat CoN-style movement arrows: a dark-edged, light-blue tube with a big
+   arrowhead. The edge polyline sits under a lighter fill for the outline. */
+.move-arrow {
+  pointer-events: none;
 }
 
-.move-path circle {
-  fill: #ffd75e;
-  stroke: #8a6a10;
-  stroke-width: 0.4;
+.move-arrow .arrow-edge {
+  fill: none;
+  stroke: #274a5e;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.move-arrow .arrow-fill {
+  fill: none;
+  stroke: #d3e6f2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.move-arrow .arrow-head {
+  fill: #d3e6f2;
+  stroke: #274a5e;
+  stroke-linejoin: round;
+}
+
+/* Ghost preview shown while aiming a move — same arrow, lighter and dashed. */
+.move-arrow.preview .arrow-fill {
+  stroke: #eaf4fb;
+  opacity: 0.9;
+  stroke-dasharray: 5 3.5;
+}
+
+.move-arrow.preview .arrow-edge {
+  opacity: 0.5;
+}
+
+.move-arrow.preview .arrow-head {
+  fill: #eaf4fb;
+  opacity: 0.9;
 }
 
 /* City medallion — a big, distinct, clickable marker (its own object, apart

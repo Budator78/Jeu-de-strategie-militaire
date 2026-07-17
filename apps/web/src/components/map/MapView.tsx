@@ -14,6 +14,7 @@ import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
 import { HudIcon } from '../hud/icons'
 import { ArmyPanel } from './ArmyPanel'
 import { CityPanel } from './CityPanel'
+import { MoveArrow } from './MoveArrow'
 import { UnitModel } from './UnitModel'
 import './MapView.css'
 
@@ -72,7 +73,11 @@ interface TopoGeometry {
 }
 
 const centroidById = new Map<string, [number, number]>()
-for (const f of provinceFeatures) centroidById.set(f.id, pathGenerator.centroid(f as never))
+const areaById = new Map<string, number>()
+for (const f of provinceFeatures) {
+  centroidById.set(f.id, pathGenerator.centroid(f as never))
+  areaById.set(f.id, pathGenerator.area(f as never))
+}
 
 /** Shortest hop route between two provinces over the adjacency graph (BFS), excluding the start. */
 function findPath(fromId: string, toId: string): string[] | null {
@@ -120,6 +125,8 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
   // — they're now two distinct, separately clickable things.
   const [selectionMode, setSelectionMode] = useState<'city' | 'province'>('province')
   const [selectedStackKey, setSelectedStackKey] = useState<string | null>(null)
+  // Province currently under the cursor — drives the move preview arrow.
+  const [hoverProvinceId, setHoverProvinceId] = useState<string | null>(null)
   const [provinceConstructOpen, setProvinceConstructOpen] = useState(false)
   const [zoomScale, setZoomScale] = useState(1)
   const provinces = useGameStore((s) => s.state.provinces)
@@ -284,6 +291,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
             className={classes.join(' ')}
             transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, 9)`}
             onClick={(event) => handleStackClick(stack, event)}
+            onMouseEnter={() => setHoverProvinceId(stack.provinceId)}
           >
             <ellipse className="unit-shadow" cx={0} cy={MODEL_H / 2 - 3.5} rx={MODEL_W * 0.34} ry={3.2} />
             {stack.key === selectedStackKey && (
@@ -350,6 +358,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
             d={pathGenerator(f as never) ?? undefined}
             className={classes.join(' ')}
             onClick={() => handleProvinceClick(f.id)}
+            onMouseEnter={() => setHoverProvinceId(f.id)}
           >
             <title>{f.properties.name_en}</title>
           </path>
@@ -398,6 +407,19 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     }
     return [...routes.entries()]
   }, [pendingOrders])
+
+  // Move preview: with a stack selected, hovering a province shows a ghost
+  // arrow of the route it would march before you commit with a click.
+  const previewPoints = useMemo(() => {
+    if (!selectedStack || !hoverProvinceId || hoverProvinceId === selectedStack.provinceId) return null
+    const path = findPath(selectedStack.provinceId, hoverProvinceId)
+    if (!path || path.length === 0) return null
+    const points = [selectedStack.provinceId, ...path]
+      .map((id) => centroidById.get(id))
+      .filter((p): p is [number, number] => Boolean(p))
+    return points.length >= 2 ? points : null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedStackKey, hoverProvinceId])
 
   // Bright white outline hugging the human country's full border (land + coast),
   // like the selected-nation glow in the source game.
@@ -453,6 +475,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               className={classes.join(' ')}
               transform={`translate(${centroid[0]}, ${centroid[1]}) scale(${1 / zoomScale}) translate(0, ${-CITY_MARKER_RISE})`}
               onClick={(event) => handleCityClick(f.id, event)}
+              onMouseEnter={() => setHoverProvinceId(f.id)}
             >
               <circle className="city-badge" r={CITY_R} />
               {/* Original tiny skyline glyph. */}
@@ -480,6 +503,39 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ownerSig, atWarSig, selectedId, selectionMode, selectedStackKey, visibleProvinces, zoomScale],
   )
+
+  // Big territorial name labels (SCOTLAND, IRELAND…) — one per country, sized
+  // by its total area (in map units so they scale with the terrain like CoN),
+  // anchored on its largest province.
+  const countryLabels = useMemo(() => {
+    const byOwner = new Map<string, { area: number; anchor: [number, number]; anchorArea: number }>()
+    for (const f of provinceFeatures) {
+      const owner = provinces[f.id]?.ownerId
+      if (!owner) continue
+      const a = areaById.get(f.id) ?? 0
+      const centroid = centroidById.get(f.id)
+      if (!centroid) continue
+      const entry = byOwner.get(owner)
+      if (!entry) {
+        byOwner.set(owner, { area: a, anchor: centroid, anchorArea: a })
+      } else {
+        entry.area += a
+        if (a > entry.anchorArea) {
+          entry.anchorArea = a
+          entry.anchor = centroid
+        }
+      }
+    }
+    return [...byOwner.entries()]
+      .filter(([, v]) => v.area > 180)
+      .map(([owner, v]) => ({
+        owner,
+        name: (countries[owner]?.name ?? owner).toUpperCase(),
+        anchor: v.anchor,
+        fontSize: Math.max(9, Math.min(42, Math.sqrt(v.area) * 0.85)),
+      }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerSig])
 
   function handleProvinceClick(provinceId: string) {
     if (selectedStack) {
@@ -604,16 +660,23 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
           {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
-          {movePaths.map(([key, points]) => (
-            <g key={key} className="move-path">
-              <polyline
-                points={points.map(([x, y]) => `${x},${y}`).join(' ')}
-                strokeWidth={1.6 / zoomScale}
-                strokeDasharray={`${4 / zoomScale} ${3 / zoomScale}`}
-              />
-              <circle cx={points[points.length - 1][0]} cy={points[points.length - 1][1]} r={2.6 / zoomScale} />
-            </g>
+          {countryLabels.map((label) => (
+            <text
+              key={label.owner}
+              className="country-label"
+              x={label.anchor[0]}
+              y={label.anchor[1]}
+              textAnchor="middle"
+              fontSize={label.fontSize}
+              strokeWidth={label.fontSize * 0.14}
+            >
+              {label.name}
+            </text>
           ))}
+          {movePaths.map(([key, points]) => (
+            <MoveArrow key={key} points={points} zoomScale={zoomScale} />
+          ))}
+          {previewPoints && <MoveArrow points={previewPoints} zoomScale={zoomScale} variant="preview" />}
           {cityMarkers}
           {troopCounters}
         </g>
