@@ -3,19 +3,21 @@
   inset: 0;
 }
 
-/* Ocean: desaturated slate blue with depth, filling the whole viewport. */
+/* Ocean: deep satellite water — brighter continental shelf up top fading to
+   darker open sea, so coastlines feel lit from the north-west. */
 .map-svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   background:
-    radial-gradient(ellipse at 30% 25%, #55697a 0%, transparent 55%),
-    radial-gradient(ellipse at 75% 75%, #33424d 0%, transparent 60%),
-    linear-gradient(160deg, #4c5f6e 0%, #43545f 45%, #3a4a54 100%);
+    radial-gradient(ellipse at 32% 22%, #3d6076 0%, transparent 52%),
+    radial-gradient(ellipse at 78% 82%, #12222e 0%, transparent 60%),
+    linear-gradient(158deg, #2f4c5e 0%, #23414f 45%, #182e3a 100%);
   cursor: grab;
   display: block;
 }
+
 
 .province {
   stroke: #5d6a63;
@@ -23,25 +25,26 @@
   transition: fill 0.1s ease;
 }
 
-/* Own territory: vivid satellite green. Everyone else fades toward gray. */
+/* Own territory: vivid satellite green. Everyone else fades toward gray.
+   Vertical gradients (defined in MapView.tsx) give a lit, terrain-like feel. */
 .province.owner-human {
-  fill: #7fa657;
+  fill: url(#landHuman);
 }
 
 .province.owner-active-ai {
-  fill: #8b9678;
+  fill: url(#landActiveAi);
 }
 
 .province.owner-passive {
-  fill: #99a191;
+  fill: url(#landPassive);
 }
 
 .province.owner-enemy {
-  fill: #9c5f4c;
+  fill: url(#landEnemy);
 }
 
 .province.owner-neutral {
-  fill: #9aa39a;
+  fill: url(#landNeutral);
 }
 
 .province:hover {
@@ -140,58 +143,54 @@
   cursor: pointer;
 }
 
-.unit-stack .stack-body {
-  fill: #232c34;
-  stroke: #10161b;
+/* CoN-style troop counter (pure SVG so hundreds composite cheaply): a light
+   card with the stack's lead-unit silhouette on the left and the owner's real
+   national flag on the right, plus a count badge for multi-unit stacks. */
+.counter-bg {
+  fill: #eef2f4;
+  stroke: #1a2530;
+  stroke-width: 0.8;
+}
+
+.counter-sprite {
+  color: #26333d;
+  overflow: visible;
+}
+
+.counter-divider {
+  stroke: #1a2530;
   stroke-width: 0.6;
 }
 
-.unit-stack.owner-human .stack-stripe {
-  fill: #7ec14f;
+.counter-count-bg {
+  fill: #1c2933;
+  stroke: #eef2f4;
+  stroke-width: 0.7;
 }
 
-.unit-stack.owner-active-ai .stack-stripe,
-.unit-stack.owner-passive .stack-stripe {
-  fill: #aeb6ad;
-}
-
-.unit-stack.owner-enemy .stack-stripe {
-  fill: #d1706b;
-}
-
-.unit-stack .stack-glyph {
-  font-size: 9px;
-  font-family: sans-serif;
-  fill: #e8eef0;
-  pointer-events: none;
-}
-
-.unit-stack .stack-count-bg {
-  fill: #7ec14f;
-  stroke: #10161b;
-  stroke-width: 0.6;
-}
-
-.unit-stack.owner-enemy .stack-count-bg {
-  fill: #d1706b;
-}
-
-.unit-stack.owner-active-ai .stack-count-bg,
-.unit-stack.owner-passive .stack-count-bg {
-  fill: #aeb6ad;
-}
-
-.unit-stack .stack-count {
+.counter-count {
+  fill: #fff;
   font-size: 7px;
-  font-weight: bold;
+  font-weight: 700;
   font-family: sans-serif;
-  fill: #10161b;
   pointer-events: none;
 }
 
-.unit-stack.selected .stack-body {
+/* Owner-tinted frame so allegiance reads at a glance. */
+.unit-stack.owner-human .counter-bg {
+  stroke: #2f7fbf;
+  stroke-width: 1.1;
+}
+
+.unit-stack.owner-enemy .counter-bg {
+  stroke: #c9524a;
+  stroke-width: 1.1;
+}
+
+.unit-stack.selected .counter-bg {
   stroke: #fff;
-  stroke-width: 1.2;
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.9));
 }
 
 /* Bottom-right button column (fullscreen, zoom, reset, layers, settings). */

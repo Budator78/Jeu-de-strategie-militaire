@@ -8,8 +8,10 @@ import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME }
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
+import { countryColor } from '../../utils/countryColor'
+import { flagUrlFor } from '../../utils/flagUrls'
 import { ConstructBuildingModal } from '../hud/ConstructBuildingModal'
-import { HudIcon } from '../hud/icons'
+import { HudIcon, UnitIcon } from '../hud/icons'
 import { ArmyPanel } from './ArmyPanel'
 import { CityPanel } from './CityPanel'
 import './MapView.css'
@@ -25,17 +27,11 @@ const CITY_LABEL_MIN_ZOOM = 2
 const CITY_LABEL_FONT_SCREEN_PX = 8.5
 const STACK_SPACING_SCREEN_PX = 24
 
-const UNIT_GLYPH: Record<string, string> = {
-  infantry: 'I',
-  nationalGuard: 'G',
-  mechInfantry: 'M',
-  recon: 'R',
-  afv: 'V',
-  tank: 'T',
-  gunship: 'H',
-  attackHelicopter: 'A',
-  fighter: 'F',
-}
+// On-map troop counter footprint, in map units (kept at constant screen size
+// via scale(1/zoomScale)). Roughly the CoN 3:2 flag-counter proportion.
+const COUNTER_W = 30
+const COUNTER_H = 20
+const FLAG_W = 12
 
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], featureCollection as never)
 const pathGenerator = geoPath(projection)
@@ -167,6 +163,47 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     [units, selectedId],
   )
 
+  // The real-time loop hands us a fresh `units` object every tick, but the map
+  // counters only care about where stacks are and what's in them — not each
+  // unit's changing health. This signature stays identical across ticks unless
+  // something actually moves, so the (heavy) troop layer keeps its identity and
+  // React skips re-rendering hundreds of flag counters every frame.
+  const unitSig = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const unit of Object.values(units)) {
+      const k = `${unit.provinceId}|${unit.ownerId}|${unit.type}`
+      counts.set(k, (counts.get(k) ?? 0) + 1)
+    }
+    return [...counts.entries()]
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([k, n]) => `${k}:${n}`)
+      .join(';')
+  }, [units])
+
+  // Which countries are at war with the human — used to tint counters. Stable
+  // across ticks (unlike the countries object) unless a war actually changes.
+  const atWarSig = useMemo(
+    () =>
+      Object.values(countries)
+        .filter((c) => c.atWarWith.includes(HUMAN_COUNTRY_ID))
+        .map((c) => c.id)
+        .sort()
+        .join(','),
+    [countries],
+  )
+
+  // Province ownership fingerprint (stable insertion order) — changes only on a
+  // capture, so map layers keyed on it skip the every-tick economy churn.
+  const ownerSig = useMemo(() => Object.values(provinces).map((p) => p.ownerId ?? '_').join('|'), [provinces])
+
+  const visibleProvinces = useMemo(() => {
+    if (!fogOfWar) return null
+    return computeVisibleProvinces(provinces, units, HUMAN_COUNTRY_ID)
+    // Visibility depends only on ownership + unit positions (ownerSig/unitSig),
+    // so it keeps a stable identity across ticks that don't move anything.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fogOfWar, ownerSig, unitSig])
+
   const unitStacks = useMemo(() => {
     const byKey = new Map<string, UnitStack>()
     for (const unit of Object.values(units)) {
@@ -198,10 +235,128 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
       })
     }
     return [...byKey.values()]
-  }, [units])
+    // Rebuilt only when stacks move/change (unitSig), not every tick. `units`
+    // is read fresh whenever unitSig changes, so positions stay correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitSig])
 
   const selectedStack = selectedStackKey ? (unitStacks.find((s) => s.key === selectedStackKey) ?? null) : null
   const humanStacks = useMemo(() => unitStacks.filter((s) => s.ownerId === HUMAN_COUNTRY_ID), [unitStacks])
+
+  // The troop counters are the map's heaviest layer (a flag <image> + sprite
+  // per stack). Memoize the whole list so it only rebuilds when stacks move,
+  // the view zooms, selection changes, fog shifts, or a war flips — never on a
+  // plain economy/health tick.
+  const troopCounters = useMemo(
+    () =>
+      unitStacks.map((stack) => {
+        // Fog of war: foreign stacks outside your sight range stay hidden.
+        if (
+          visibleProvinces &&
+          stack.ownerId !== HUMAN_COUNTRY_ID &&
+          !visibleProvinces.has(stack.provinceId)
+        ) {
+          return null
+        }
+        const classes = ['unit-stack', ownerClass(stack.ownerId)]
+        if (stack.key === selectedStackKey) classes.push('selected')
+        // The counter shows the stack's strongest unit as its silhouette —
+        // that's the "lead" the player reads at a glance.
+        const lead = stack.units.reduce((best, u) => (u.attack > best.attack ? u : best), stack.units[0])
+        const flagUrl = flagUrlFor(stack.ownerId)
+        const flagX = COUNTER_W / 2 - FLAG_W
+        return (
+          <g
+            key={stack.key}
+            className={classes.join(' ')}
+            transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, ${COUNTER_H / 2 + 4})`}
+            onClick={(event) => handleStackClick(stack, event)}
+          >
+            <rect
+              className="counter-bg"
+              x={-COUNTER_W / 2}
+              y={-COUNTER_H / 2}
+              width={COUNTER_W}
+              height={COUNTER_H}
+              rx={2}
+            />
+            {/* Unit silhouette (nested viewport re-maps the 0..32 sprite). */}
+            <svg
+              className="counter-sprite"
+              x={-COUNTER_W / 2 + 1}
+              y={-COUNTER_H / 2 + 1}
+              width={COUNTER_W - FLAG_W - 2}
+              height={COUNTER_H - 2}
+              viewBox="0 0 32 32"
+            >
+              <UnitIcon type={lead.type} />
+            </svg>
+            {/* Real national flag, or the country's political color. */}
+            {flagUrl ? (
+              <image
+                href={flagUrl}
+                x={flagX}
+                y={-COUNTER_H / 2 + 1}
+                width={FLAG_W - 1}
+                height={COUNTER_H - 2}
+                preserveAspectRatio="xMidYMid slice"
+              />
+            ) : (
+              <rect
+                x={flagX}
+                y={-COUNTER_H / 2 + 1}
+                width={FLAG_W - 1}
+                height={COUNTER_H - 2}
+                fill={countryColor(stack.ownerId)}
+              />
+            )}
+            <line
+              className="counter-divider"
+              x1={flagX}
+              y1={-COUNTER_H / 2 + 1}
+              x2={flagX}
+              y2={COUNTER_H / 2 - 1}
+            />
+            {stack.units.length > 1 && (
+              <>
+                <circle className="counter-count-bg" cx={COUNTER_W / 2 - 2} cy={COUNTER_H / 2 - 2} r={5} />
+                <text className="counter-count" x={COUNTER_W / 2 - 2} y={COUNTER_H / 2 - 0.2} textAnchor="middle">
+                  {stack.units.length}
+                </text>
+              </>
+            )}
+          </g>
+        )
+      }),
+    // handleStackClick/ownerClass read fresh state via the deps below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [unitStacks, zoomScale, selectedStackKey, visibleProvinces, atWarSig],
+  )
+
+  // The province choropleth is static geometry; only its fills/fog/selection
+  // change. Memoized so the 300+ paths aren't reconciled on every clock tick.
+  const provinceLayer = useMemo(
+    () =>
+      provinceFeatures.map((f) => {
+        const provinceState = provinces[f.id]
+        const classes = ['province', ownerClass(provinceState?.ownerId ?? null)]
+        if (provinceState?.isCity) classes.push('city')
+        if (f.id === selectedId) classes.push('selected')
+        if (visibleProvinces && !visibleProvinces.has(f.id)) classes.push('fogged')
+        return (
+          <path
+            key={f.id}
+            d={pathGenerator(f as never) ?? undefined}
+            className={classes.join(' ')}
+            onClick={() => handleProvinceClick(f.id)}
+          >
+            <title>{f.properties.name_en}</title>
+          </path>
+        )
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [ownerSig, atWarSig, selectedId, visibleProvinces],
+  )
 
   function cycleStack(delta: number) {
     if (humanStacks.length === 0 || !selectedStack) return
@@ -225,11 +380,6 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
    * plus neighbors, and one province around each of your units. null when
    * the admin toggle disables fog — everything visible.
    */
-  const visibleProvinces = useMemo(() => {
-    if (!fogOfWar) return null
-    return computeVisibleProvinces(provinces, units, HUMAN_COUNTRY_ID)
-  }, [fogOfWar, provinces, units])
-
   // Marching routes of your own units (current hop + queued waypoints),
   // drawn as dashed arrows; identical stack routes are deduped.
   const movePaths = useMemo(() => {
@@ -260,7 +410,8 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
       },
     )
     return pathGenerator(outlineMesh as never) ?? undefined
-  }, [provinces])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerSig])
 
   // Front line: the shared border between two provinces whose owners are at war.
   const frontLinePath = useMemo(() => {
@@ -276,7 +427,8 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
       },
     )
     return pathGenerator(frontMesh as never) ?? undefined
-  }, [provinces, countries])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownerSig, atWarSig])
 
   const cityLabels = useMemo(
     () =>
@@ -340,24 +492,32 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           }
         }}
       >
+        <defs>
+          {/* Cheap satellite depth: per-allegiance vertical shading (lit from
+              the north) instead of costly feTurbulence, which froze the map. */}
+          <linearGradient id="landHuman" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#8fb765" />
+            <stop offset="100%" stopColor="#6b9147" />
+          </linearGradient>
+          <linearGradient id="landActiveAi" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#9aa585" />
+            <stop offset="100%" stopColor="#7c8768" />
+          </linearGradient>
+          <linearGradient id="landPassive" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a7af9d" />
+            <stop offset="100%" stopColor="#8b9384" />
+          </linearGradient>
+          <linearGradient id="landEnemy" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ad6b56" />
+            <stop offset="100%" stopColor="#894f3f" />
+          </linearGradient>
+          <linearGradient id="landNeutral" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#a8b1a6" />
+            <stop offset="100%" stopColor="#8b9489" />
+          </linearGradient>
+        </defs>
         <g ref={gRef}>
-          {provinceFeatures.map((f) => {
-            const provinceState = provinces[f.id]
-            const classes = ['province', ownerClass(provinceState?.ownerId ?? null)]
-            if (provinceState?.isCity) classes.push('city')
-            if (f.id === selectedId) classes.push('selected')
-            if (visibleProvinces && !visibleProvinces.has(f.id)) classes.push('fogged')
-            return (
-              <path
-                key={f.id}
-                d={pathGenerator(f as never) ?? undefined}
-                className={classes.join(' ')}
-                onClick={() => handleProvinceClick(f.id)}
-              >
-                <title>{f.properties.name_en}</title>
-              </path>
-            )
-          })}
+          {provinceLayer}
           <path d={meshLinesPath} className="mesh-lines" strokeWidth={0.5 / zoomScale} />
           {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
           {frontLinePath && <path d={frontLinePath} className="front-line" />}
@@ -387,37 +547,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
               )}
             </g>
           ))}
-          {unitStacks.map((stack) => {
-            // Fog of war: foreign stacks outside your sight range stay hidden.
-            if (
-              visibleProvinces &&
-              stack.ownerId !== HUMAN_COUNTRY_ID &&
-              !visibleProvinces.has(stack.provinceId)
-            ) {
-              return null
-            }
-            const classes = ['unit-stack', ownerClass(stack.ownerId)]
-            if (stack.key === selectedStackKey) classes.push('selected')
-            const glyph = UNIT_GLYPH[stack.units[0].type] ?? '?'
-            return (
-              <g
-                key={stack.key}
-                className={classes.join(' ')}
-                transform={`translate(${stack.x}, ${stack.y}) scale(${1 / zoomScale}) translate(${stack.offsetX}, 12)`}
-                onClick={(event) => handleStackClick(stack, event)}
-              >
-                <rect x={-10} y={-7} width={20} height={14} rx={2} className="stack-body" />
-                <rect x={-10} y={-7} width={4} height={14} rx={1} className="stack-stripe" />
-                <text x={-2.5} y={3.5} textAnchor="middle" className="stack-glyph">
-                  {glyph}
-                </text>
-                <circle cx={10} cy={-7} r={5.5} className="stack-count-bg" />
-                <text x={10} y={-4.5} textAnchor="middle" className="stack-count">
-                  {stack.units.length}
-                </text>
-              </g>
-            )
-          })}
+          {troopCounters}
         </g>
       </svg>
 
