@@ -83,11 +83,18 @@
   pointer-events: none;
 }
 
-/* Maritime lanes between ports (dashed, over the water). */
+/* Maritime lanes: port ↔ ocean waypoints ↔ port (a mesh over the water). */
 .route-sea {
   fill: none;
-  stroke: rgba(120, 200, 235, 0.55);
+  stroke: rgba(150, 195, 220, 0.4);
   stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* The ocean waypoint nodes the lanes pass through. */
+.sea-waypoint {
+  fill: rgba(200, 225, 240, 0.55);
+  stroke: rgba(90, 130, 155, 0.5);
   pointer-events: none;
 }
 

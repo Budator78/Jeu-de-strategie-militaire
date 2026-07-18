@@ -10,7 +10,9 @@ import {
   landRouteEdges,
   portIds,
   provinceFeatures,
-  seaRouteEdges,
+  seaEdges,
+  seaNodes,
+  seaWaypointStart,
   topology,
   OBJECT_NAME,
 } from '../../data/geoData'
@@ -99,9 +101,34 @@ function edgesToPath(edges: Array<[string, string]>): string {
   return d
 }
 
-// Land border web (through the continents) and port-to-port maritime lanes.
+// Land border web (through the continents).
 const landRoutePath = edgesToPath(landRouteEdges)
-const seaRoutePath = edgesToPath(seaRouteEdges)
+
+// Sea mesh: project every node [lon,lat], then draw the lanes between them and
+// a small mark at each ocean waypoint. Troops route port → waypoints → port.
+const seaNodesXY = seaNodes.map((ll) => projection(ll as [number, number]) ?? [NaN, NaN])
+const seaLanesPath = (() => {
+  let d = ''
+  for (const [u, v] of seaEdges) {
+    const a = seaNodesXY[u]
+    const b = seaNodesXY[v]
+    if (!Number.isFinite(a[0]) || !Number.isFinite(b[0])) continue
+    d += `M${a[0].toFixed(1)},${a[1].toFixed(1)}L${b[0].toFixed(1)},${b[1].toFixed(1)}`
+  }
+  return d
+})()
+const waypointMarksPath = (() => {
+  let d = ''
+  for (let i = seaWaypointStart; i < seaNodesXY.length; i++) {
+    const p = seaNodesXY[i]
+    if (!Number.isFinite(p[0])) continue
+    const x = p[0]
+    const y = p[1]
+    // A tiny diamond mark per waypoint, all in one path (cheap).
+    d += `M${(x - 1.1).toFixed(1)},${y.toFixed(1)}L${x.toFixed(1)},${(y - 1.1).toFixed(1)}L${(x + 1.1).toFixed(1)},${y.toFixed(1)}L${x.toFixed(1)},${(y + 1.1).toFixed(1)}Z`
+  }
+  return d
+})()
 
 interface TopoGeometry {
   id?: string | number
@@ -752,12 +779,8 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
             <g key={dx} transform={`translate(${dx}, 0)`}>
               {provinceLayer}
               <path d={landRoutePath} className="route-land" strokeWidth={0.7 / zoomScale} />
-              <path
-                d={seaRoutePath}
-                className="route-sea"
-                strokeWidth={0.8 / zoomScale}
-                strokeDasharray={`${3 / zoomScale} ${2.4 / zoomScale}`}
-              />
+              <path d={seaLanesPath} className="route-sea" strokeWidth={0.65 / zoomScale} />
+              <path d={waypointMarksPath} className="sea-waypoint" strokeWidth={0.5 / zoomScale} />
               {portMarkers}
               {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
               {frontLinePath && <path d={frontLinePath} className="front-line" />}

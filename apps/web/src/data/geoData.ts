@@ -41,9 +41,14 @@ const routeGraph = buildRouteGraph(provinceFeatures, landAdjacency, coastalIds)
 /** province id -> neighboring province ids (land + sea network). */
 export const adjacency = routeGraph.adjacency
 
-/** Drawn route layers: land borders and port-to-port sea lanes. */
+/** Land route layer: province borders as id pairs. */
 export const landRouteEdges = routeGraph.landEdges
-export const seaRouteEdges = routeGraph.seaEdges
 
-/** Provinces that host a port (endpoints of sea lanes). */
+/** Sea mesh: node positions [lon,lat] (ports then waypoints), edges as index
+ * pairs into seaNodes, and where the ocean waypoints start. */
+export const seaNodes = routeGraph.seaNodes
+export const seaEdges = routeGraph.seaEdges
+export const seaWaypointStart = routeGraph.waypointStart
+
+/** Provinces that host a port. */
 export const portIds = routeGraph.portIds
