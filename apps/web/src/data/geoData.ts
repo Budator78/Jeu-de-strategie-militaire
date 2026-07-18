@@ -1,7 +1,7 @@
 import { feature } from 'topojson-client'
 import { buildAdjacency, type Topology } from '@con/engine'
 import topologyRaw from './geo/world.topojson?raw'
-import { buildRouteGraph } from './routeGraph'
+import { buildRouteGraph, detectCoastal } from './routeGraph'
 
 export const OBJECT_NAME = 'provinces'
 
@@ -32,8 +32,18 @@ export const provinceFeatures = featureCollection.features
 /** Land adjacency from shared TopoJSON arcs, before the route web is built. */
 const landAdjacency = buildAdjacency(topology, OBJECT_NAME)
 
-// Even Delaunay route web (land + sea), reachable through the network.
-const routeGraph = buildRouteGraph(provinceFeatures, landAdjacency)
+/** Provinces on a real coastline (they can host ports). */
+export const coastalIds = detectCoastal(topology, OBJECT_NAME)
 
-/** province id -> neighboring province ids (the route network). */
+// Land borders + maritime lanes between coastal ports.
+const routeGraph = buildRouteGraph(provinceFeatures, landAdjacency, coastalIds)
+
+/** province id -> neighboring province ids (land + sea network). */
 export const adjacency = routeGraph.adjacency
+
+/** Drawn route layers: land borders and port-to-port sea lanes. */
+export const landRouteEdges = routeGraph.landEdges
+export const seaRouteEdges = routeGraph.seaEdges
+
+/** Provinces that host a port (endpoints of sea lanes). */
+export const portIds = routeGraph.portIds

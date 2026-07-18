@@ -75,14 +75,38 @@
   cursor: crosshair;
 }
 
-/* The route network troops travel (Delaunay web). RED for now so we can
-   confirm which lines these are versus borders/labels. */
-.route-net {
+/* Land route web (through the continents). */
+.route-land {
   fill: none;
-  stroke: #ff3b30;
+  stroke: rgba(230, 238, 244, 0.24);
   stroke-linecap: round;
-  opacity: 0.9;
   pointer-events: none;
+}
+
+/* Maritime lanes between ports (dashed, over the water). */
+.route-sea {
+  fill: none;
+  stroke: rgba(120, 200, 235, 0.55);
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* Port marker: a small anchored node at a coastal city. */
+.port-marker {
+  pointer-events: none;
+}
+
+.port-bg {
+  fill: #12303f;
+  stroke: #7fd2ee;
+  stroke-width: 0.8;
+}
+
+.port-anchor {
+  fill: none;
+  stroke: #dff2fb;
+  stroke-width: 0.6;
+  stroke-linecap: round;
 }
 
 /* Bright white glow hugging the player country's full border, like the reference UI. */

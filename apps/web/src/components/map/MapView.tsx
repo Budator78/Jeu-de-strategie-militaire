@@ -4,7 +4,16 @@ import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
 import { computeVisibleProvinces, type Unit } from '@con/engine'
-import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
+import {
+  adjacency,
+  featureCollection,
+  landRouteEdges,
+  portIds,
+  provinceFeatures,
+  seaRouteEdges,
+  topology,
+  OBJECT_NAME,
+} from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
@@ -75,27 +84,24 @@ const WORLD_RIGHT = projection([180, 0])![0]
 const WORLD_W = WORLD_RIGHT - WORLD_LEFT
 const WORLD_OFFSETS = [-WORLD_W, 0, WORLD_W]
 
-// The route network troops travel (the Delaunay web), drawn as one thin path
-// between province centres. Temporarily RED to confirm which lines these are.
-const routeNetworkPath = (() => {
-  const centroids = new Map<string, [number, number]>()
-  for (const f of provinceFeatures) centroids.set(f.id, pathGenerator.centroid(f as never))
-  const seen = new Set<string>()
+// Province centres in projected space, for drawing the route layers and ports.
+const routeCentroids = new Map<string, [number, number]>()
+for (const f of provinceFeatures) routeCentroids.set(f.id, pathGenerator.centroid(f as never))
+
+function edgesToPath(edges: Array<[string, string]>): string {
   let d = ''
-  for (const [id, neighbors] of Object.entries(adjacency)) {
-    const c1 = centroids.get(id)
-    if (!c1 || !Number.isFinite(c1[0])) continue
-    for (const neighborId of neighbors) {
-      const key = id < neighborId ? `${id}|${neighborId}` : `${neighborId}|${id}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const c2 = centroids.get(neighborId)
-      if (!c2 || !Number.isFinite(c2[0])) continue
-      d += `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
-    }
+  for (const [a, b] of edges) {
+    const c1 = routeCentroids.get(a)
+    const c2 = routeCentroids.get(b)
+    if (!c1 || !c2 || !Number.isFinite(c1[0]) || !Number.isFinite(c2[0])) continue
+    d += `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
   }
   return d
-})()
+}
+
+// Land border web (through the continents) and port-to-port maritime lanes.
+const landRoutePath = edgesToPath(landRouteEdges)
+const seaRoutePath = edgesToPath(seaRouteEdges)
 
 interface TopoGeometry {
   id?: string | number
@@ -562,6 +568,30 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     [ownerSig, atWarSig, selectedId, selectionMode, selectedStackKey, visibleProvinces, zoomScale],
   )
 
+  // Ports: a small anchor at each coastal city that anchors a sea lane, held at
+  // constant screen size. Static (coast + city never change), only rescaled.
+  const portMarkers = useMemo(
+    () =>
+      provinceFeatures
+        .filter((f) => portIds.has(f.id) && provinces[f.id]?.isCity)
+        .map((f) => {
+          const c = routeCentroids.get(f.id)
+          if (!c || !Number.isFinite(c[0])) return null
+          return (
+            <g key={f.id} className="port-marker" transform={`translate(${c[0]}, ${c[1]}) scale(${1 / zoomScale})`}>
+              <circle className="port-bg" r={3.4} />
+              <g className="port-anchor">
+                <circle cx={0} cy={-1.7} r={0.8} />
+                <line x1={0} y1={-1} x2={0} y2={2} />
+                <path d="M-1.8 0.6 Q0 3 1.8 0.6" />
+              </g>
+            </g>
+          )
+        }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [zoomScale],
+  )
+
   // Big territorial name labels (SCOTLAND, IRELAND…) — one per country, sized
   // by its total area (in map units so they scale with the terrain like CoN),
   // anchored on its largest province.
@@ -721,7 +751,14 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           {WORLD_OFFSETS.map((dx) => (
             <g key={dx} transform={`translate(${dx}, 0)`}>
               {provinceLayer}
-              <path d={routeNetworkPath} className="route-net" strokeWidth={0.7 / zoomScale} />
+              <path d={landRoutePath} className="route-land" strokeWidth={0.7 / zoomScale} />
+              <path
+                d={seaRoutePath}
+                className="route-sea"
+                strokeWidth={0.8 / zoomScale}
+                strokeDasharray={`${3 / zoomScale} ${2.4 / zoomScale}`}
+              />
+              {portMarkers}
               {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
               {frontLinePath && <path d={frontLinePath} className="front-line" />}
               {/* Country names only while zoomed out; they hand off to city
