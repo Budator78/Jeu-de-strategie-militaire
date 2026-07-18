@@ -1,7 +1,7 @@
 import { feature } from 'topojson-client'
 import { buildAdjacency, type Topology } from '@con/engine'
 import topologyRaw from './geo/world.topojson?raw'
-import { buildSeaRoutes } from './seaRoutes'
+import { buildRouteGraph } from './routeGraph'
 
 export const OBJECT_NAME = 'provinces'
 
@@ -29,14 +29,11 @@ export const featureCollection = feature(
 
 export const provinceFeatures = featureCollection.features
 
-/** Land adjacency from shared TopoJSON arcs, before sea routes are added. */
+/** Land adjacency from shared TopoJSON arcs, before the route web is built. */
 const landAdjacency = buildAdjacency(topology, OBJECT_NAME)
 
-// Add naval routes so islands are reachable and troops can cross water.
-const seaRoutes = buildSeaRoutes(provinceFeatures, landAdjacency)
+// Even Delaunay route web (land + sea), reachable through the network.
+const routeGraph = buildRouteGraph(provinceFeatures, landAdjacency)
 
-/** province id -> neighboring province ids (land borders + sea crossings). */
-export const adjacency = seaRoutes.adjacency
-
-/** "idA|idB" (sorted) for every link that is a sea crossing, for map styling. */
-export const seaPairs = seaRoutes.seaPairs
+/** province id -> neighboring province ids (the route network). */
+export const adjacency = routeGraph.adjacency

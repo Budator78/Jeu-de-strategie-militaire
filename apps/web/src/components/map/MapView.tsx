@@ -4,7 +4,7 @@ import { select } from 'd3-selection'
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom'
 import { mesh } from 'topojson-client'
 import { computeVisibleProvinces, type Unit } from '@con/engine'
-import { adjacency, featureCollection, provinceFeatures, seaPairs, topology, OBJECT_NAME } from '../../data/geoData'
+import { adjacency, featureCollection, provinceFeatures, topology, OBJECT_NAME } from '../../data/geoData'
 import { HUMAN_COUNTRY_ID, useGameStore } from '../../state/gameStore'
 import { CITY_SIZE } from '../../state/scenario'
 import { BUILDING_LABELS_FR, RESOURCE_LABELS_FR, UNIT_LABELS_FR } from '../../i18n/fr'
@@ -75,15 +75,13 @@ const WORLD_RIGHT = projection([180, 0])![0]
 const WORLD_W = WORLD_RIGHT - WORLD_LEFT
 const WORLD_OFFSETS = [-WORLD_W, 0, WORLD_W]
 
-// The route network troops travel: every province adjacency drawn as a thin
-// line between centroids — land borders solid, sea crossings dashed — like the
-// logistics web in the source game.
-const routeNetwork = (() => {
+// The route network troops travel (the Delaunay web), drawn as one thin path
+// between province centres. Temporarily RED to confirm which lines these are.
+const routeNetworkPath = (() => {
   const centroids = new Map<string, [number, number]>()
   for (const f of provinceFeatures) centroids.set(f.id, pathGenerator.centroid(f as never))
   const seen = new Set<string>()
-  let land = ''
-  let sea = ''
+  let d = ''
   for (const [id, neighbors] of Object.entries(adjacency)) {
     const c1 = centroids.get(id)
     if (!c1 || !Number.isFinite(c1[0])) continue
@@ -93,12 +91,10 @@ const routeNetwork = (() => {
       seen.add(key)
       const c2 = centroids.get(neighborId)
       if (!c2 || !Number.isFinite(c2[0])) continue
-      const seg = `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
-      if (seaPairs.has(key)) sea += seg
-      else land += seg
+      d += `M${c1[0].toFixed(1)},${c1[1].toFixed(1)}L${c2[0].toFixed(1)},${c2[1].toFixed(1)}`
     }
   }
-  return { land, sea }
+  return d
 })()
 
 interface TopoGeometry {
@@ -175,15 +171,21 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
     const gSelection = select(gRef.current)
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([MIN_ZOOM, MAX_ZOOM])
-      // Pan freely across the three tiled world copies (so it wraps), but stop
-      // at the outer copies' edges and never above/below the map into the void.
+      // Horizontally unbounded (the map wraps infinitely); vertically clamped
+      // to the map so you never drift into the void above/below.
       .translateExtent([
-        [WORLD_LEFT - WORLD_W, 0],
-        [WORLD_RIGHT + WORLD_W, HEIGHT],
+        [-1e7, 0],
+        [1e7, HEIGHT],
       ])
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
-        gSelection.attr('transform', event.transform.toString())
-        setZoomScale(event.transform.k)
+        const t = event.transform
+        // Wrap the horizontal pan into one world period. The world is tiled
+        // three times, so the rendered content is seamless and repeats forever
+        // — pan east past the dateline and the Americas roll round again.
+        const period = t.k * WORLD_W
+        const wrappedX = t.x - Math.round(t.x / period) * period
+        gSelection.attr('transform', `translate(${wrappedX},${t.y}) scale(${t.k})`)
+        setZoomScale(t.k)
       })
     zoomBehaviorRef.current = zoomBehavior
     svgSelection.call(zoomBehavior)
@@ -719,13 +721,7 @@ export function MapView({ onOpenSettings }: { onOpenSettings: () => void }) {
           {WORLD_OFFSETS.map((dx) => (
             <g key={dx} transform={`translate(${dx}, 0)`}>
               {provinceLayer}
-              <path d={routeNetwork.land} className="route-land" strokeWidth={0.6 / zoomScale} />
-              <path
-                d={routeNetwork.sea}
-                className="route-sea"
-                strokeWidth={0.7 / zoomScale}
-                strokeDasharray={`${2.5 / zoomScale} ${2 / zoomScale}`}
-              />
+              <path d={routeNetworkPath} className="route-net" strokeWidth={0.7 / zoomScale} />
               {humanOutlinePath && <path d={humanOutlinePath} className="human-outline" strokeWidth={1.6 / zoomScale} />}
               {frontLinePath && <path d={frontLinePath} className="front-line" />}
               {/* Country names only while zoomed out; they hand off to city

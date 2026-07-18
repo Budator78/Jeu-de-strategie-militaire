@@ -75,19 +75,13 @@
   cursor: crosshair;
 }
 
-/* The route network troops travel: land borders (solid) and sea crossings
-   (dashed lanes over the water). */
-.route-land {
+/* The route network troops travel (Delaunay web). RED for now so we can
+   confirm which lines these are versus borders/labels. */
+.route-net {
   fill: none;
-  stroke: rgba(226, 236, 242, 0.22);
+  stroke: #ff3b30;
   stroke-linecap: round;
-  pointer-events: none;
-}
-
-.route-sea {
-  fill: none;
-  stroke: rgba(150, 205, 230, 0.4);
-  stroke-linecap: round;
+  opacity: 0.9;
   pointer-events: none;
 }
 
