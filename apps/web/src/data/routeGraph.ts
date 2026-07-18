@@ -19,14 +19,25 @@ import type { ProvinceFeature } from './geoData'
  */
 
 const EARTH_KM = 6371
-// Ocean waypoint grid.
-const GRID_STEP_DEG = 5
+// Ocean waypoint field: sampled on a base grid, then thinned by distance to the
+// nearest land so it's dense along coasts and sparse in the open ocean, and
+// jittered so the mesh looks natural rather than gridded.
+const GRID_STEP_DEG = 4
 const GRID_LAT_MIN = -60
 const GRID_LAT_MAX = 76
+const NEAR_COAST_KM = 550 // full density inside this band
+const MID_SEA_KM = 1400 // half density out to here, sparse beyond
+const JITTER_FRAC = 0.45 // waypoint wobble, as a fraction of the grid step
 // Mesh edge limits.
-const MAX_LANE_KM = 1500 // longest single mesh edge
+const MAX_LANE_KM = 2200 // longest single mesh edge (sparse open-ocean lanes)
 const PORT_PORT_DIRECT_KM = 360 // ports may link directly only across a strait
-const PORT_LINK_RANGE_KM = 2600 // how far a port reaches other ports through the mesh
+const PORT_LINK_RANGE_KM = 3200 // how far a port reaches other ports through the mesh
+
+/** Deterministic [0,1) hash so the jittered field is stable across reloads. */
+function hash01(x: number, y: number): number {
+  const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+  return s - Math.floor(s)
+}
 
 const km = (a: [number, number], b: [number, number]) => geoDistance(a, b) * EARTH_KM
 
@@ -88,8 +99,7 @@ export function buildRouteGraph(
     }
   }
 
-  // Ocean waypoints: a lon/lat grid, keeping only points that fall in water
-  // (inside no province). A bounding-box prefilter keeps the test cheap.
+  // Water test (inside no province), with a bounding-box prefilter.
   const bounds = features.map((f) => geoBounds(f as never))
   const inWater = (lon: number, lat: number): boolean => {
     for (let i = 0; i < features.length; i++) {
@@ -99,11 +109,38 @@ export function buildRouteGraph(
     }
     return true
   }
-  const waypoints: Array<[number, number]> = []
-  for (let lat = GRID_LAT_MIN; lat <= GRID_LAT_MAX; lat += GRID_STEP_DEG) {
-    for (let lon = -180; lon < 180; lon += GRID_STEP_DEG) {
-      if (inWater(lon, lat)) waypoints.push([lon, lat])
+
+  // Classify a base grid into land and water cells.
+  const landPts: Array<[number, number]> = []
+  const waterCells: Array<{ lon: number; lat: number; gi: number; gj: number }> = []
+  let gj = 0
+  for (let lat = GRID_LAT_MIN; lat <= GRID_LAT_MAX; lat += GRID_STEP_DEG, gj++) {
+    let gi = 0
+    for (let lon = -180; lon < 180; lon += GRID_STEP_DEG, gi++) {
+      if (inWater(lon, lat)) waterCells.push({ lon, lat, gi, gj })
+      else landPts.push([lon, lat])
     }
+  }
+
+  // Keep each water cell at a spacing that grows with distance to the nearest
+  // land (dense near coasts, sparse offshore), and jitter it for a natural web.
+  const waypoints: Array<[number, number]> = []
+  for (const cell of waterCells) {
+    let coastKm = Infinity
+    for (const lp of landPts) {
+      const d = km([cell.lon, cell.lat], lp)
+      if (d < coastKm) coastKm = d
+    }
+    const keepEvery = coastKm < NEAR_COAST_KM ? 1 : coastKm < MID_SEA_KM ? 2 : 3
+    if (cell.gi % keepEvery !== 0 || cell.gj % keepEvery !== 0) continue
+    const amp = GRID_STEP_DEG * JITTER_FRAC
+    let jLon = cell.lon + (hash01(cell.lon, cell.lat) - 0.5) * 2 * amp
+    let jLat = cell.lat + (hash01(cell.lat, cell.lon) - 0.5) * 2 * amp
+    if (!inWater(jLon, jLat)) {
+      jLon = cell.lon
+      jLat = cell.lat
+    }
+    waypoints.push([jLon, jLat])
   }
 
   // Sea-mesh nodes: coastal ports first, then the ocean waypoints.
